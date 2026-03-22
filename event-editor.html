@@ -92,12 +92,15 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Fecha (display)</label>
-              <input type="text" class="form-input" id="date_label" placeholder="Sábado 12 de abril">
+              <label class="form-label">Fecha</label>
+              <input type="date" class="form-input" id="date_picker">
+              <input type="hidden" id="date_label">
+              <div class="text-xs text-muted mt-8" id="date-display"></div>
             </div>
             <div class="form-group">
               <label class="form-label">Hora</label>
-              <input type="text" class="form-input" id="time_label" placeholder="22:00 hrs">
+              <input type="time" class="form-input" id="time_picker">
+              <input type="hidden" id="time_label">
             </div>
           </div>
           <div class="form-row">
@@ -210,6 +213,30 @@
       'description', 'dos', 'donts', 'restrictions', 'contact_email', 'contact_phone',
       'contact_instagram', 'address', 'map_url', 'banner_url', 'layout_url'];
 
+    // Date picker → formatted Spanish label
+    function formatDateES(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      return `${days[date.getDay()]} ${d} de ${months[date.getMonth()]} de ${y}`;
+    }
+
+    document.getElementById('date_picker').addEventListener('input', (e) => {
+      if (e.target.value) {
+        const formatted = formatDateES(e.target.value);
+        document.getElementById('date_label').value = formatted;
+        document.getElementById('date-display').textContent = formatted;
+      }
+    });
+
+    document.getElementById('time_picker').addEventListener('input', (e) => {
+      if (e.target.value) {
+        document.getElementById('time_label').value = e.target.value + ' hrs';
+      }
+    });
+
     // Auto-generate slug from name
     document.getElementById('name').addEventListener('input', (e) => {
       if (!isEditing) {
@@ -257,6 +284,17 @@
         }
 
         document.getElementById('slug-preview').textContent = event.slug;
+
+        // Populate date/time pickers from stored labels
+        if (event.date_label) {
+          document.getElementById('date-display').textContent = event.date_label;
+          document.getElementById('date_label').value = event.date_label;
+        }
+        if (event.time_label) {
+          const timeVal = event.time_label.replace(' hrs', '');
+          document.getElementById('time_picker').value = timeVal;
+          document.getElementById('time_label').value = event.time_label;
+        }
 
         if (event.banner_url) {
           const img = document.getElementById('banner-preview');
