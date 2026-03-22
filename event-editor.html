@@ -32,11 +32,40 @@
     .banner-preview {
       width: 100%;
       aspect-ratio: 16/9;
-      border-radius: var(--radius);
       object-fit: cover;
       background: var(--bg-input);
       border: 1px solid var(--border);
       margin-bottom: 12px;
+    }
+    .upload-zone {
+      border: 1px dashed var(--border);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      margin-bottom: 8px;
+    }
+    .upload-zone:hover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .upload-zone.uploading {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .upload-zone input[type="file"] {
+      display: none;
+    }
+    .upload-zone .upload-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .upload-zone .upload-hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
     }
     .sponsor-item {
       display: flex;
@@ -213,13 +242,24 @@
       <div class="editor-sidebar">
         <div class="card">
           <div class="form-group">
-            <label class="form-label">Banner</label>
+            <label class="form-label">Banner — 1200×630px</label>
             <img id="banner-preview" class="banner-preview" src="" alt="" style="display:none">
-            <input type="url" class="form-input" id="banner_url" placeholder="URL de la imagen">
+            <div class="upload-zone" id="banner-zone" onclick="document.getElementById('banner-file').click()">
+              <input type="file" id="banner-file" accept="image/*" onchange="uploadImage(this, 'banner_url', 'banner-preview')">
+              <div class="upload-text">Click para subir imagen</div>
+              <div class="upload-hint">JPG, PNG o WebP · max 5MB</div>
+            </div>
+            <input type="hidden" id="banner_url">
           </div>
           <div class="form-group">
-            <label class="form-label">Layout del venue</label>
-            <input type="url" class="form-input" id="layout_url" placeholder="URL de la imagen">
+            <label class="form-label">Layout del venue — 1200×900px</label>
+            <img id="layout-preview" class="banner-preview" src="" alt="" style="display:none">
+            <div class="upload-zone" id="layout-zone" onclick="document.getElementById('layout-file').click()">
+              <input type="file" id="layout-file" accept="image/*" onchange="uploadImage(this, 'layout_url', 'layout-preview')">
+              <div class="upload-text">Click para subir imagen</div>
+              <div class="upload-hint">JPG, PNG o WebP · max 5MB</div>
+            </div>
+            <input type="hidden" id="layout_url">
           </div>
 
           <div style="margin-top:24px; display:flex; flex-direction:column; gap:8px;">
@@ -326,15 +366,45 @@
       document.getElementById('slug-preview').textContent = e.target.value || 'mi-evento';
     });
 
-    document.getElementById('banner_url').addEventListener('input', (e) => {
-      const img = document.getElementById('banner-preview');
-      if (e.target.value) {
-        img.src = e.target.value;
-        img.style.display = 'block';
-      } else {
-        img.style.display = 'none';
+    // Image upload
+    async function uploadImage(fileInput, hiddenFieldId, previewId) {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const zone = fileInput.closest('.upload-zone');
+      const textEl = zone.querySelector('.upload-text');
+      const originalText = textEl.textContent;
+
+      zone.classList.add('uploading');
+      textEl.textContent = 'Subiendo...';
+
+      try {
+        const token = await Auth.getToken();
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const res = await fetch(`${CONFIG.API_URL}/api/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+        document.getElementById(hiddenFieldId).value = data.url;
+        const preview = document.getElementById(previewId);
+        preview.src = data.url;
+        preview.style.display = 'block';
+        textEl.textContent = 'Cambiar imagen';
+      } catch (err) {
+        showAlert('Error al subir imagen: ' + err.message);
+        textEl.textContent = originalText;
+      } finally {
+        zone.classList.remove('uploading');
+        fileInput.value = '';
       }
-    });
+    }
 
     function showAlert(msg, type = 'error') {
       const el = document.getElementById('alert');
@@ -376,9 +446,18 @@
         }
 
         if (event.banner_url) {
+          document.getElementById('banner_url').value = event.banner_url;
           const img = document.getElementById('banner-preview');
           img.src = event.banner_url;
           img.style.display = 'block';
+          document.querySelector('#banner-zone .upload-text').textContent = 'Cambiar imagen';
+        }
+        if (event.layout_url) {
+          document.getElementById('layout_url').value = event.layout_url;
+          const img = document.getElementById('layout-preview');
+          img.src = event.layout_url;
+          img.style.display = 'block';
+          document.querySelector('#layout-zone .upload-text').textContent = 'Cambiar imagen';
         }
 
         if (event.published) {
