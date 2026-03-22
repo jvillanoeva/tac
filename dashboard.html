@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Colectivo</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <style>
+    .event-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all var(--transition);
+      text-decoration: none;
+      color: inherit;
+    }
+    .event-card:hover {
+      border-color: var(--border-focus);
+      background: var(--bg-input);
+    }
+    .event-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius);
+      object-fit: cover;
+      background: var(--bg-input);
+      flex-shrink: 0;
+    }
+    .event-info { flex: 1; min-width: 0; }
+    .event-name {
+      font-weight: 600;
+      font-size: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .event-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .event-stats {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .event-stats .stat-value { font-size: 1.25rem; }
+    .events-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      margin-top: 32px;
+    }
+    .section-label:first-child { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/dashboard.html" class="nav-brand">Colectivo</a>
+    <div class="nav-links">
+      <a href="/dashboard.html" class="active">Eventos</a>
+      <span class="nav-user" id="nav-email"></span>
+      <a href="#" onclick="Auth.signOut()">Salir</a>
+    </div>
+  </nav>
+
+  <div class="container page">
+    <div class="page-header">
+      <h1>Mis eventos</h1>
+      <a href="/event-editor.html" class="btn btn-primary">+ Nuevo evento</a>
+    </div>
+
+    <div id="events-container">
+      <div class="empty-state">
+        <div class="spinner" style="margin:0 auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script>
+    Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    API.init(CONFIG.API_URL);
+
+    async function loadDashboard() {
+      const session = await Auth.requireSession();
+      document.getElementById('nav-email').textContent = session.user.email;
+
+      try {
+        const { owned, staffed } = await API.get('/api/events');
+
+        const container = document.getElementById('events-container');
+
+        if (owned.length === 0 && staffed.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <h3>No tienes eventos aún</h3>
+              <p class="text-secondary">Crea tu primer evento para empezar</p>
+              <a href="/event-editor.html" class="btn btn-primary mt-24">+ Nuevo evento</a>
+            </div>`;
+          return;
+        }
+
+        let html = '';
+
+        if (owned.length > 0) {
+          html += '<div class="section-label">Mis eventos</div><div class="events-list">';
+          for (const ev of owned) {
+            html += renderEventCard(ev);
+          }
+          html += '</div>';
+        }
+
+        if (staffed.length > 0) {
+          html += '<div class="section-label">Staff</div><div class="events-list">';
+          for (const ev of staffed) {
+            html += renderEventCard(ev, ev.staff_role);
+          }
+          html += '</div>';
+        }
+
+        container.innerHTML = html;
+      } catch (err) {
+        document.getElementById('events-container').innerHTML = `
+          <div class="empty-state">
+            <h3>Error al cargar eventos</h3>
+            <p class="text-secondary">${err.message}</p>
+          </div>`;
+      }
+    }
+
+    function renderEventCard(ev, staffRole) {
+      const thumb = ev.banner_url
+        ? `<img src="${ev.banner_url}" class="event-thumb" alt="">`
+        : `<div class="event-thumb"></div>`;
+
+      const badge = ev.published
+        ? '<span class="badge badge-success">Publicado</span>'
+        : '<span class="badge badge-muted">Borrador</span>';
+
+      const roleLabel = staffRole
+        ? `<span class="badge badge-warning" style="margin-left:8px">${staffRole}</span>`
+        : '';
+
+      return `
+        <a href="/guestlist.html?slug=${ev.slug}" class="event-card">
+          ${thumb}
+          <div class="event-info">
+            <div class="event-name">${ev.name}</div>
+            <div class="event-meta">
+              ${ev.date_label || ''}${ev.venue ? ' · ' + ev.venue : ''}
+            </div>
+            <div class="mt-8">${badge}${roleLabel}</div>
+          </div>
+        </a>`;
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

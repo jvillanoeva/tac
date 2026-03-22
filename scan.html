@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scanner — Colectivo</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <style>
+    .scanner-page {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px;
+      text-align: center;
+    }
+    .scanner-header {
+      margin-bottom: 24px;
+    }
+    .scanner-header h1 { font-size: 1.25rem; }
+    #scanner-container {
+      width: 100%;
+      aspect-ratio: 1;
+      max-width: 360px;
+      margin: 0 auto 24px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 2px solid var(--border);
+      background: #000;
+    }
+    #scanner-container video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .scanner-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 24px;
+    }
+    .scanner-stat {
+      text-align: center;
+    }
+    .scanner-stat .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .scanner-stat .label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Result overlay */
+    .result-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 200ms;
+      background: rgba(0,0,0,0.85);
+    }
+    .result-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .result-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 48px 32px;
+      text-align: center;
+      width: 100%;
+      max-width: 360px;
+      border: 3px solid var(--border);
+    }
+    .result-card.success { border-color: var(--success); }
+    .result-card.warning { border-color: var(--warning); }
+    .result-card.error { border-color: var(--danger); }
+    .result-icon { font-size: 56px; margin-bottom: 16px; }
+    .result-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+    .result-notes { color: var(--text-secondary); font-size: 14px; margin-bottom: 8px; }
+    .result-message { color: var(--text-secondary); font-size: 14px; }
+    .result-stats { margin-top: 16px; font-size: 13px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="scanner-page">
+    <div class="scanner-header">
+      <a href="/dashboard.html" class="nav-brand" style="display:block;margin-bottom:16px;">COLECTIVO</a>
+      <h1 id="event-name">Scanner</h1>
+      <p class="text-sm text-secondary" id="event-meta"></p>
+    </div>
+
+    <div class="scanner-stats">
+      <div class="scanner-stat">
+        <div class="value" id="stat-in">—</div>
+        <div class="label">Dentro</div>
+      </div>
+      <div class="scanner-stat">
+        <div class="value" id="stat-total">—</div>
+        <div class="label">Total</div>
+      </div>
+    </div>
+
+    <div id="scanner-container"></div>
+
+    <button class="btn" onclick="window.location.href='/guestlist.html?slug=' + slug" style="margin-top:8px">
+      Ver lista completa
+    </button>
+  </div>
+
+  <!-- Result overlay -->
+  <div class="result-overlay" id="result-overlay" onclick="dismissResult()">
+    <div class="result-card" id="result-card">
+      <div class="result-icon" id="result-icon"></div>
+      <div class="result-name" id="result-name"></div>
+      <div class="result-notes" id="result-notes"></div>
+      <div class="result-message" id="result-message"></div>
+      <div class="result-stats" id="result-stats"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script>
+    Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    API.init(CONFIG.API_URL);
+
+    const slug = new URLSearchParams(window.location.search).get('slug');
+    if (!slug) window.location.href = '/dashboard.html';
+
+    let scanner = null;
+    let isProcessing = false;
+
+    async function init() {
+      await Auth.requireSession();
+
+      // Load event info
+      try {
+        const event = await API.get(`/api/events/${slug}`);
+        document.getElementById('event-name').textContent = event.name;
+        document.getElementById('event-meta').textContent =
+          [event.date_label, event.venue].filter(Boolean).join(' · ');
+        document.getElementById('stat-in').textContent = event.stats?.checked_in || 0;
+        document.getElementById('stat-total').textContent = event.stats?.total_guests || 0;
+      } catch (err) {
+        document.getElementById('event-name').textContent = 'Error: ' + err.message;
+      }
+
+      startScanner();
+    }
+
+    function startScanner() {
+      scanner = new Html5Qrcode('scanner-container');
+      scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        () => {}
+      ).catch(err => {
+        document.getElementById('scanner-container').innerHTML =
+          `<div style="padding:32px;color:var(--text-secondary);">
+            <p>No se pudo acceder a la cámara</p>
+            <p class="text-xs mt-8">${err}</p>
+          </div>`;
+      });
+    }
+
+    async function onScanSuccess(decodedText) {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      try {
+        const result = await API.post('/api/checkin', { token: decodedText });
+        showResult(result);
+      } catch (err) {
+        showResult({
+          status: 'invalid',
+          message: err.message,
+          guest: { name: 'Error' },
+        });
+      }
+    }
+
+    function showResult(result) {
+      const overlay = document.getElementById('result-overlay');
+      const card = document.getElementById('result-card');
+
+      card.className = 'result-card';
+
+      if (result.status === 'success') {
+        card.classList.add('success');
+        document.getElementById('result-icon').textContent = '✓';
+        document.getElementById('result-name').textContent = result.guest.name;
+        document.getElementById('result-notes').textContent = result.guest.notes || '';
+        document.getElementById('result-message').textContent = result.message;
+        if (result.stats) {
+          document.getElementById('result-stats').textContent =
+            `${result.stats.checked_in} / ${result.stats.total}`;
+          document.getElementById('stat-in').textContent = result.stats.checked_in;
+          document.getElementById('stat-total').textContent = result.stats.total;
+        }
+      } else if (result.status === 'already_checked_in') {
+        card.classList.add('warning');
+        document.getElementById('result-icon').textContent = '⚠';
+        document.getElementById('result-name').textContent = result.guest?.name || '';
+        document.getElementById('result-notes').textContent = result.guest?.notes || '';
+        document.getElementById('result-message').textContent = result.message;
+        document.getElementById('result-stats').textContent = '';
+      } else {
+        card.classList.add('error');
+        document.getElementById('result-icon').textContent = '✕';
+        document.getElementById('result-name').textContent = '';
+        document.getElementById('result-notes').textContent = '';
+        document.getElementById('result-message').textContent = result.message;
+        document.getElementById('result-stats').textContent = '';
+      }
+
+      overlay.classList.add('active');
+
+      // Auto-dismiss after 3 seconds
+      setTimeout(dismissResult, 3000);
+    }
+
+    function dismissResult() {
+      document.getElementById('result-overlay').classList.remove('active');
+      isProcessing = false;
+    }
+
+    init();
+  </script>
+</body>
+</html>
