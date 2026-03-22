@@ -45,6 +45,36 @@
       margin-bottom: 8px;
     }
     .sponsor-item input { flex: 1; }
+    .tier-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tier-item input { flex: 1; }
+    .tier-item button {
+      padding: 6px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .tier-item button:hover { color: var(--danger); border-color: var(--danger); }
+    #add-tier-btn {
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      width: 100%;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    #add-tier-btn:hover { border-color: var(--accent); color: var(--accent); }
     @media (max-width: 768px) {
       .editor-layout {
         grid-template-columns: 1fr;
@@ -169,6 +199,14 @@
             <input type="url" class="form-input" id="map_url" placeholder="https://maps.google.com/...">
           </div>
         </div>
+
+        <!-- Ticket Types -->
+        <div class="editor-section">
+          <div class="editor-section-title">Tipos de acceso</div>
+          <p class="text-xs text-secondary mb-16">Define las categorías de acceso para tu guestlist (ej. GA, VIP, Staff, Prensa)</p>
+          <div id="tiers-container"></div>
+          <button type="button" id="add-tier-btn" onclick="addTierRow()">+ Agregar tipo</button>
+        </div>
       </div>
 
       <!-- Sidebar -->
@@ -212,6 +250,44 @@
     const FIELDS = ['name', 'slug', 'subtitle', 'date_label', 'time_label', 'venue', 'city',
       'description', 'dos', 'donts', 'restrictions', 'contact_email', 'contact_phone',
       'contact_instagram', 'address', 'map_url', 'banner_url', 'layout_url'];
+
+    // --- Tier management ---
+    let tierCounter = 0;
+
+    function addTierRow(label = '') {
+      tierCounter++;
+      const container = document.getElementById('tiers-container');
+      const div = document.createElement('div');
+      div.className = 'tier-item';
+      div.id = `tier-row-${tierCounter}`;
+      div.innerHTML = `
+        <input type="text" class="form-input tier-label" placeholder="Nombre del tipo (ej. VIP)" value="${label}">
+        <button type="button" onclick="removeTierRow(${tierCounter})">✕</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeTierRow(id) {
+      const row = document.getElementById(`tier-row-${id}`);
+      if (row) row.remove();
+    }
+
+    function getTiers() {
+      const labels = document.querySelectorAll('.tier-label');
+      const tiers = [];
+      labels.forEach((input, i) => {
+        const label = input.value.trim();
+        if (label) {
+          tiers.push({ id: `tier-${i + 1}`, label });
+        }
+      });
+      return tiers;
+    }
+
+    function loadTiers(tiers) {
+      if (!tiers || !Array.isArray(tiers)) return;
+      tiers.forEach(t => addTierRow(t.label));
+    }
 
     // Date picker → formatted Spanish label
     function formatDateES(dateStr) {
@@ -285,6 +361,9 @@
 
         document.getElementById('slug-preview').textContent = event.slug;
 
+        // Populate tiers
+        loadTiers(event.tiers);
+
         // Populate date/time pickers from stored labels
         if (event.date_label) {
           document.getElementById('date-display').textContent = event.date_label;
@@ -324,7 +403,7 @@
       btn.disabled = true;
       btn.textContent = 'Guardando...';
 
-      const body = { published: publish };
+      const body = { published: publish, tiers: getTiers() };
       for (const field of FIELDS) {
         const el = document.getElementById(field);
         if (el) body[field] = el.value.trim() || null;
