@@ -162,7 +162,7 @@
       scanner = new Html5Qrcode('scanner-container');
       scanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        { fps: 15, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 },
         onScanSuccess,
         () => {}
       ).catch(err => {
@@ -226,8 +226,8 @@
 
       overlay.classList.add('active');
 
-      // Auto-dismiss after 3 seconds
-      setTimeout(dismissResult, 3000);
+      // Auto-dismiss after 2 seconds
+      setTimeout(dismissResult, 2000);
     }
 
     function dismissResult() {

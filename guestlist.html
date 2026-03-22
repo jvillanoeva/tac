@@ -122,6 +122,7 @@
             <tr>
               <th>Nombre</th>
               <th>Email</th>
+              <th>Categoría</th>
               <th>Notas</th>
               <th>QR</th>
               <th>Estado</th>
@@ -129,7 +130,7 @@
             </tr>
           </thead>
           <tbody id="guests-table">
-            <tr><td colspan="6" class="text-secondary" style="text-align:center;padding:32px;">Cargando...</td></tr>
+            <tr><td colspan="7" class="text-secondary" style="text-align:center;padding:32px;">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -151,6 +152,12 @@
         <div class="form-group">
           <label class="form-label">Email</label>
           <input type="email" class="form-input" id="add-email" placeholder="email@ejemplo.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select class="form-input" id="add-tier">
+            <option value="">— Sin categoría —</option>
+          </select>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -204,6 +211,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
     if (!slug) window.location.href = '/dashboard.html';
 
     let allGuests = [];
+    let eventTiers = [];
 
     async function init() {
       await Auth.requireSession();
@@ -220,6 +228,14 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         document.getElementById('event-badge').innerHTML = event.published
           ? '<span class="badge badge-success">Publicado</span>'
           : '<span class="badge badge-muted">Borrador</span>';
+
+        // Populate tier dropdown
+        eventTiers = event.tiers || [];
+        const tierSelect = document.getElementById('add-tier');
+        tierSelect.innerHTML = '<option value="">— Sin categoría —</option>';
+        eventTiers.forEach(t => {
+          tierSelect.innerHTML += `<option value="${t.label}">${t.label}</option>`;
+        });
 
         // Nav links
         const scanLink = document.getElementById('scan-link');
@@ -249,7 +265,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         renderTable(guests);
       } catch (err) {
         document.getElementById('guests-table').innerHTML =
-          `<tr><td colspan="6" style="text-align:center;padding:32px;" class="text-secondary">${err.message}</td></tr>`;
+          `<tr><td colspan="7" style="text-align:center;padding:32px;" class="text-secondary">${err.message}</td></tr>`;
       }
     }
 
@@ -257,7 +273,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       const tbody = document.getElementById('guests-table');
 
       if (guests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-secondary" style="text-align:center;padding:32px;">No hay invitados aún</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-secondary" style="text-align:center;padding:32px;">No hay invitados aún</td></tr>';
         return;
       }
 
@@ -265,6 +281,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         <tr>
           <td><strong>${esc(g.name)}</strong></td>
           <td class="text-sm text-secondary">${esc(g.email || '—')}</td>
+          <td class="text-sm">${g.tier ? `<span class="badge">${esc(g.tier)}</span>` : '<span class="text-muted text-xs">—</span>'}</td>
           <td class="text-sm text-secondary">${esc(g.notes || '')}</td>
           <td>${g.email_sent ? '<span class="badge badge-success">Enviado</span>' : g.email ? '<span class="badge badge-muted">Pendiente</span>' : '<span class="text-muted text-xs">Sin email</span>'}</td>
           <td>${g.checked_in ? '<span class="badge badge-success">✓ Dentro</span>' : '<span class="badge badge-muted">Pendiente</span>'}</td>
@@ -320,6 +337,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           email: document.getElementById('add-email').value.trim() || null,
           phone: document.getElementById('add-phone').value.trim() || null,
           notes: document.getElementById('add-notes').value.trim() || null,
+          tier: document.getElementById('add-tier').value || null,
           send_email: document.getElementById('add-send-email').checked,
         });
 
@@ -328,6 +346,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         document.getElementById('add-email').value = '';
         document.getElementById('add-phone').value = '';
         document.getElementById('add-notes').value = '';
+        document.getElementById('add-tier').value = '';
 
         closeModal('add-modal');
         await loadGuests();
