@@ -262,6 +262,24 @@
             <input type="hidden" id="layout_url">
           </div>
 
+          <div class="form-group" style="margin-top:16px;">
+            <label class="form-label">Logo del evento — 400×120px</label>
+            <img id="logo-preview" style="max-width:100%;max-height:60px;margin-bottom:8px;display:none" src="" alt="">
+            <div class="upload-zone" id="logo-zone" onclick="document.getElementById('logo-file').click()">
+              <input type="file" id="logo-file" accept="image/*" onchange="uploadImage(this, 'logo_url', 'logo-preview')">
+              <div class="upload-text">Click para subir logo</div>
+              <div class="upload-hint">PNG transparente recomendado</div>
+            </div>
+            <input type="hidden" id="logo_url">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color de marca</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="color" id="brand_color" value="#e74c3c" style="width:48px;height:36px;padding:2px;border:1px solid var(--border);background:var(--bg-input);cursor:pointer;">
+              <input type="text" class="form-input" id="brand_color_hex" value="#e74c3c" placeholder="#e74c3c" style="flex:1;font-family:monospace;" oninput="document.getElementById('brand_color').value=this.value">
+            </div>
+          </div>
+
           <div style="margin-top:24px; display:flex; flex-direction:column; gap:8px;">
             <button class="btn btn-primary" onclick="saveEvent(true)" id="publish-btn">
               Publicar evento
@@ -289,7 +307,12 @@
 
     const FIELDS = ['name', 'slug', 'subtitle', 'date_label', 'time_label', 'venue', 'city',
       'description', 'dos', 'donts', 'restrictions', 'contact_email', 'contact_phone',
-      'contact_instagram', 'address', 'map_url', 'banner_url', 'layout_url'];
+      'contact_instagram', 'address', 'map_url', 'banner_url', 'layout_url', 'logo_url', 'brand_color'];
+
+    // Sync color picker ↔ hex input
+    document.getElementById('brand_color').addEventListener('input', (e) => {
+      document.getElementById('brand_color_hex').value = e.target.value;
+    });
 
     // --- Tier management ---
     let tierCounter = 0;
@@ -458,6 +481,17 @@
           img.src = event.layout_url;
           img.style.display = 'block';
           document.querySelector('#layout-zone .upload-text').textContent = 'Cambiar imagen';
+        }
+        if (event.logo_url) {
+          document.getElementById('logo_url').value = event.logo_url;
+          const img = document.getElementById('logo-preview');
+          img.src = event.logo_url;
+          img.style.display = 'block';
+          document.querySelector('#logo-zone .upload-text').textContent = 'Cambiar logo';
+        }
+        if (event.brand_color) {
+          document.getElementById('brand_color').value = event.brand_color;
+          document.getElementById('brand_color_hex').value = event.brand_color;
         }
 
         if (event.published) {
