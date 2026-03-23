@@ -100,7 +100,7 @@
     <div class="nav-links">
       <a href="/dashboard.html">← Eventos</a>
       <a href="#" id="scan-link" class="hidden">Scanner</a>
-      <a href="#" id="edit-link" class="hidden">Editar</a>
+      <a href="#" id="edit-link" class="hidden" style="display:none">Editar</a>
       <a href="#" onclick="Auth.signOut()">Salir</a>
     </div>
   </nav>
@@ -297,7 +297,12 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         if (event.user_role === 'owner') {
           const editLink = document.getElementById('edit-link');
           editLink.href = `/event-editor.html?slug=${slug}`;
+          editLink.style.display = '';
           editLink.classList.remove('hidden');
+        }
+        // Door role: hide add/bulk/send-all buttons (view + check-in only)
+        if (event.user_role === 'door') {
+          document.querySelector('.toolbar').style.display = 'none';
         }
       } catch (err) {
         document.getElementById('event-name').textContent = 'Error';
