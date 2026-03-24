@@ -140,6 +140,7 @@
       <div class="toolbar">
         <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Agregar</button>
         <button class="btn btn-sm" onclick="openBulkModal()">Agregar múltiples</button>
+        <button class="btn btn-sm" onclick="openExcelModal()">📄 Subir Excel</button>
         <button class="btn btn-sm" onclick="sendAllQr()" id="send-all-btn">📧 Enviar QR a todos</button>
       </div>
       <div class="search-bar" style="margin:0; max-width:280px; flex:1;">
@@ -215,9 +216,14 @@
             <input type="tel" class="form-input" id="add-phone" placeholder="55 1234 5678">
           </div>
           <div class="form-group">
-            <label class="form-label">Notas</label>
-            <input type="text" class="form-input" id="add-notes" placeholder="VIP, +1, etc.">
+            <label class="form-label">Accesos extras (+N)</label>
+            <input type="number" class="form-input" id="add-plus" min="0" max="10" value="0" placeholder="0">
+            <span class="text-xs text-secondary">Cada +1 genera un QR adicional</span>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <input type="text" class="form-input" id="add-notes" placeholder="Notas internas">
         </div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
           <input type="checkbox" id="add-send-email" checked>
@@ -235,10 +241,10 @@
         <h2>Agregar múltiples</h2>
         <button class="modal-close" onclick="closeModal('bulk-modal')">&times;</button>
       </div>
-      <p class="text-sm text-secondary mb-16">Un invitado por línea. Formato: <code>Nombre, email, notas</code></p>
+      <p class="text-sm text-secondary mb-16">Un invitado por línea. Formato: <code>Nombre, email, categoría, notas, +N</code></p>
       <div class="form-group">
-        <textarea class="form-textarea" id="bulk-text" placeholder="Juan Pérez, juan@email.com, VIP
-María López, maria@email.com
+        <textarea class="form-textarea" id="bulk-text" placeholder="Juan Pérez, juan@email.com, VIP, , 2
+María López, maria@email.com, GA
 Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-size:13px;"></textarea>
       </div>
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
@@ -249,6 +255,71 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
     </div>
   </div>
 
+  <!-- Excel Upload Modal -->
+  <div class="modal-overlay" id="excel-modal">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h2>Subir Excel / CSV</h2>
+        <button class="modal-close" onclick="closeModal('excel-modal')">&times;</button>
+      </div>
+      <p class="text-sm text-secondary mb-16">Sube un archivo <code>.xlsx</code> o <code>.csv</code>. Mapea las columnas a los campos correctos.</p>
+
+      <div id="excel-upload-zone" class="upload-zone" style="border:1px dashed var(--border);padding:24px;text-align:center;cursor:pointer;margin-bottom:16px;" onclick="document.getElementById('excel-file').click()">
+        <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="parseExcelFile(this)">
+        <div class="upload-text" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para seleccionar archivo</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">.xlsx, .xls, .csv</div>
+      </div>
+
+      <!-- Column mapping -->
+      <div id="excel-mapping" style="display:none;">
+        <div class="text-sm" style="margin-bottom:12px;">
+          <strong id="excel-row-count"></strong> filas encontradas. Mapea las columnas:
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+          <div class="form-group">
+            <label class="form-label">Nombre *</label>
+            <select class="form-input" id="map-name"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <select class="form-input" id="map-email"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoría</label>
+            <select class="form-input" id="map-tier"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <select class="form-input" id="map-phone"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <select class="form-input" id="map-notes"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">+N (extras)</label>
+            <select class="form-input" id="map-plus"></select>
+          </div>
+        </div>
+
+        <!-- Preview table -->
+        <div style="max-height:200px;overflow:auto;border:1px solid var(--border);margin-bottom:16px;">
+          <table style="font-size:12px;">
+            <thead><tr id="excel-preview-head"></tr></thead>
+            <tbody id="excel-preview-body"></tbody>
+          </table>
+        </div>
+
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
+          <input type="checkbox" id="excel-send-email">
+          <span class="text-sm">Enviar QR por email a todos</span>
+        </label>
+        <button class="btn btn-primary" style="width:100%" onclick="importExcel()" id="excel-btn">Importar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/js/config.js"></script>
   <script src="/assets/js/auth.js"></script>
@@ -389,15 +460,37 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       btn.disabled = true;
       btn.textContent = 'Agregando...';
 
+      const name = document.getElementById('add-name').value.trim();
+      const email = document.getElementById('add-email').value.trim() || null;
+      const phone = document.getElementById('add-phone').value.trim() || null;
+      const notes = document.getElementById('add-notes').value.trim() || null;
+      const tier = document.getElementById('add-tier').value || null;
+      const sendEmail = document.getElementById('add-send-email').checked;
+      const plusN = parseInt(document.getElementById('add-plus').value) || 0;
+
       try {
-        await API.post(`/api/events/${slug}/guests`, {
-          name: document.getElementById('add-name').value.trim(),
-          email: document.getElementById('add-email').value.trim() || null,
-          phone: document.getElementById('add-phone').value.trim() || null,
-          notes: document.getElementById('add-notes').value.trim() || null,
-          tier: document.getElementById('add-tier').value || null,
-          send_email: document.getElementById('add-send-email').checked,
-        });
+        if (plusN > 0) {
+          // Create primary + N extra guests via bulk endpoint
+          const guests = [{ name, email, phone, notes, tier }];
+          for (let i = 1; i <= plusN; i++) {
+            guests.push({
+              name: `${name} (+${i})`,
+              email: null, // extras don't get individual emails
+              phone: null,
+              notes: `Acceso extra de ${name}`,
+              tier,
+            });
+          }
+          await API.post(`/api/events/${slug}/guests/bulk`, {
+            guests,
+            send_emails: sendEmail,
+          });
+        } else {
+          await API.post(`/api/events/${slug}/guests`, {
+            name, email, phone, notes, tier,
+            send_email: sendEmail,
+          });
+        }
 
         // Reset form
         document.getElementById('add-name').value = '';
@@ -405,6 +498,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         document.getElementById('add-phone').value = '';
         document.getElementById('add-notes').value = '';
         document.getElementById('add-tier').value = '';
+        document.getElementById('add-plus').value = '0';
 
         closeModal('add-modal');
         await loadGuests();
@@ -422,14 +516,25 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       if (!text) return;
 
       const lines = text.split('\n').filter(l => l.trim());
-      const guests = lines.map(line => {
+      const guests = [];
+      for (const line of lines) {
         const parts = line.split(',').map(p => p.trim());
-        return {
-          name: parts[0],
-          email: parts[1] || null,
-          notes: parts[2] || null,
-        };
-      });
+        const name = parts[0];
+        const email = parts[1] || null;
+        const tier = parts[2] || null;
+        const notes = parts[3] || null;
+        const plusN = parseInt(parts[4]) || 0;
+
+        guests.push({ name, email, tier, notes });
+        for (let i = 1; i <= plusN; i++) {
+          guests.push({
+            name: `${name} (+${i})`,
+            email: null,
+            tier,
+            notes: `Acceso extra de ${name}`,
+          });
+        }
+      }
 
       btn.disabled = true;
       btn.textContent = `Agregando ${guests.length}...`;
@@ -554,6 +659,157 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         await loadStaff();
       } catch (err) {
         alert(err.message);
+      }
+    }
+
+    // === Excel/CSV Upload ===
+    let excelData = [];
+    let excelHeaders = [];
+
+    function openExcelModal() {
+      document.getElementById('excel-modal').classList.add('active');
+    }
+
+    function parseExcelFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const workbook = XLSX.read(e.target.result, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+          if (json.length === 0) {
+            alert('El archivo está vacío');
+            return;
+          }
+
+          excelData = json;
+          excelHeaders = Object.keys(json[0]);
+
+          document.getElementById('excel-row-count').textContent = `${json.length}`;
+          document.getElementById('excel-mapping').style.display = 'block';
+          document.querySelector('#excel-upload-zone .upload-text').textContent = `${file.name} (${json.length} filas)`;
+
+          // Populate mapping dropdowns
+          const fields = ['map-name', 'map-email', 'map-tier', 'map-phone', 'map-notes', 'map-plus'];
+          fields.forEach(fieldId => {
+            const sel = document.getElementById(fieldId);
+            const isRequired = fieldId === 'map-name';
+            sel.innerHTML = isRequired ? '' : '<option value="">— No mapear —</option>';
+            excelHeaders.forEach(h => {
+              const opt = document.createElement('option');
+              opt.value = h;
+              opt.textContent = h;
+              sel.appendChild(opt);
+            });
+          });
+
+          // Auto-map by common column names
+          autoMap('map-name', ['nombre', 'name', 'invitado', 'guest', 'nombre completo', 'full name']);
+          autoMap('map-email', ['email', 'correo', 'mail', 'e-mail']);
+          autoMap('map-tier', ['categoria', 'categoría', 'tier', 'tipo', 'type', 'category', 'ticket']);
+          autoMap('map-phone', ['telefono', 'teléfono', 'phone', 'tel', 'celular']);
+          autoMap('map-notes', ['notas', 'notes', 'nota', 'comentario', 'comments']);
+          autoMap('map-plus', ['plus', 'extras', '+n', 'acompañantes', 'guests']);
+
+          // Preview first 5 rows
+          const headRow = document.getElementById('excel-preview-head');
+          headRow.innerHTML = excelHeaders.map(h => `<th style="font-size:11px;white-space:nowrap;">${esc(h)}</th>`).join('');
+          const bodyEl = document.getElementById('excel-preview-body');
+          bodyEl.innerHTML = json.slice(0, 5).map(row =>
+            '<tr>' + excelHeaders.map(h => `<td style="font-size:11px;white-space:nowrap;">${esc(String(row[h] || ''))}</td>`).join('') + '</tr>'
+          ).join('');
+        } catch (err) {
+          alert('Error al leer archivo: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function autoMap(selectId, keywords) {
+      const sel = document.getElementById(selectId);
+      const lower = excelHeaders.map(h => h.toLowerCase().trim());
+      for (const kw of keywords) {
+        const idx = lower.indexOf(kw);
+        if (idx !== -1) {
+          sel.value = excelHeaders[idx];
+          return;
+        }
+      }
+    }
+
+    async function importExcel() {
+      const nameCol = document.getElementById('map-name').value;
+      if (!nameCol) { alert('Mapea la columna de Nombre'); return; }
+
+      const emailCol = document.getElementById('map-email').value;
+      const tierCol = document.getElementById('map-tier').value;
+      const phoneCol = document.getElementById('map-phone').value;
+      const notesCol = document.getElementById('map-notes').value;
+      const plusCol = document.getElementById('map-plus').value;
+      const sendEmails = document.getElementById('excel-send-email').checked;
+
+      const btn = document.getElementById('excel-btn');
+      btn.disabled = true;
+      btn.textContent = 'Importando...';
+
+      // Build guest list from Excel data
+      const guests = [];
+      for (const row of excelData) {
+        const name = String(row[nameCol] || '').trim();
+        if (!name) continue;
+
+        const email = emailCol ? String(row[emailCol] || '').trim() || null : null;
+        const tier = tierCol ? String(row[tierCol] || '').trim() || null : null;
+        const phone = phoneCol ? String(row[phoneCol] || '').trim() || null : null;
+        const notes = notesCol ? String(row[notesCol] || '').trim() || null : null;
+        const plusN = plusCol ? parseInt(row[plusCol]) || 0 : 0;
+
+        guests.push({ name, email, tier, phone, notes });
+
+        // Add +N extras
+        for (let i = 1; i <= plusN; i++) {
+          guests.push({
+            name: `${name} (+${i})`,
+            email: null,
+            tier,
+            phone: null,
+            notes: `Acceso extra de ${name}`,
+          });
+        }
+      }
+
+      if (guests.length === 0) {
+        alert('No se encontraron invitados válidos');
+        btn.disabled = false;
+        btn.textContent = 'Importar';
+        return;
+      }
+
+      try {
+        const result = await API.post(`/api/events/${slug}/guests/bulk`, {
+          guests,
+          send_emails: sendEmails,
+        });
+
+        closeModal('excel-modal');
+        // Reset
+        document.getElementById('excel-file').value = '';
+        document.getElementById('excel-mapping').style.display = 'none';
+        document.querySelector('#excel-upload-zone .upload-text').textContent = 'Click para seleccionar archivo';
+        excelData = [];
+        excelHeaders = [];
+
+        await loadGuests();
+        alert(`${result.added} invitados importados, ${result.emails_sent} emails enviados`);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Importar';
       }
     }
 
