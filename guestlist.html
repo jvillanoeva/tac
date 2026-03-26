@@ -470,20 +470,11 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
       try {
         if (plusN > 0) {
-          // Create primary + N extra guests via bulk endpoint
-          const guests = [{ name, email, phone, notes, tier }];
-          for (let i = 1; i <= plusN; i++) {
-            guests.push({
-              name: `${name} (+${i})`,
-              email: null, // extras don't get individual emails
-              phone: null,
-              notes: `Acceso extra de ${name}`,
-              tier,
-            });
-          }
-          await API.post(`/api/events/${slug}/guests/bulk`, {
-            guests,
-            send_emails: sendEmail,
+          // Create primary + N extra guests via dedicated endpoint
+          await API.post(`/api/events/${slug}/guests`, {
+            name, email, phone, notes, tier,
+            send_email: sendEmail,
+            plus: plusN,
           });
         } else {
           await API.post(`/api/events/${slug}/guests`, {
@@ -525,15 +516,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         const notes = parts[3] || null;
         const plusN = parseInt(parts[4]) || 0;
 
-        guests.push({ name, email, tier, notes });
-        for (let i = 1; i <= plusN; i++) {
-          guests.push({
-            name: `${name} (+${i})`,
-            email: null,
-            tier,
-            notes: `Acceso extra de ${name}`,
-          });
-        }
+        guests.push({ name, email, tier, notes, plus: plusN });
       }
 
       btn.disabled = true;
@@ -768,18 +751,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         const notes = notesCol ? String(row[notesCol] || '').trim() || null : null;
         const plusN = plusCol ? parseInt(row[plusCol]) || 0 : 0;
 
-        guests.push({ name, email, tier, phone, notes });
-
-        // Add +N extras
-        for (let i = 1; i <= plusN; i++) {
-          guests.push({
-            name: `${name} (+${i})`,
-            email: null,
-            tier,
-            phone: null,
-            notes: `Acceso extra de ${name}`,
-          });
-        }
+        guests.push({ name, email, tier, phone, notes, plus: plusN });
       }
 
       if (guests.length === 0) {
