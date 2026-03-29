@@ -83,6 +83,7 @@
     .result-card.error { border-color: var(--danger); }
     .result-icon { font-size: 56px; margin-bottom: 16px; }
     .result-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+    .result-tier { font-size: 13px; text-transform: uppercase; letter-spacing: 3px; font-weight: 700; margin-bottom: 8px; }
     .result-notes { color: var(--text-secondary); font-size: 14px; margin-bottom: 8px; }
     .result-message { color: var(--text-secondary); font-size: 14px; }
     .result-stats { margin-top: 16px; font-size: 13px; color: var(--text-muted); }
@@ -119,6 +120,7 @@
     <div class="result-card" id="result-card">
       <div class="result-icon" id="result-icon"></div>
       <div class="result-name" id="result-name"></div>
+      <div class="result-tier" id="result-tier"></div>
       <div class="result-notes" id="result-notes"></div>
       <div class="result-message" id="result-message"></div>
       <div class="result-stats" id="result-stats"></div>
@@ -200,6 +202,8 @@
         card.classList.add('success');
         document.getElementById('result-icon').textContent = '✓';
         document.getElementById('result-name').textContent = result.guest.name;
+        document.getElementById('result-tier').textContent = result.guest.tier || '';
+        document.getElementById('result-tier').style.color = result.guest.tier === 'VIP' ? '#f1c40f' : 'var(--text-muted)';
         document.getElementById('result-notes').textContent = result.guest.notes || '';
         document.getElementById('result-message').textContent = result.message;
         if (result.stats) {
@@ -212,6 +216,8 @@
         card.classList.add('warning');
         document.getElementById('result-icon').textContent = '⚠';
         document.getElementById('result-name').textContent = result.guest?.name || '';
+        document.getElementById('result-tier').textContent = result.guest?.tier || '';
+        document.getElementById('result-tier').style.color = result.guest?.tier === 'VIP' ? '#f1c40f' : 'var(--text-muted)';
         document.getElementById('result-notes').textContent = result.guest?.notes || '';
         document.getElementById('result-message').textContent = result.message;
         document.getElementById('result-stats').textContent = '';
@@ -219,6 +225,7 @@
         card.classList.add('error');
         document.getElementById('result-icon').textContent = '✕';
         document.getElementById('result-name').textContent = '';
+        document.getElementById('result-tier').textContent = '';
         document.getElementById('result-notes').textContent = '';
         document.getElementById('result-message').textContent = result.message;
         document.getElementById('result-stats').textContent = '';
