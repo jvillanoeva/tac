@@ -571,7 +571,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
     async function downloadReport() {
       try {
-        const token = (await supabase.auth.getSession()).data.session.access_token;
+        const token = await Auth.getToken();
         const resp = await fetch(`${CONFIG.API_URL}/api/events/${slug}/report`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
