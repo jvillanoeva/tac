@@ -142,6 +142,7 @@
         <button class="btn btn-sm" onclick="openBulkModal()">Agregar múltiples</button>
         <button class="btn btn-sm" onclick="openExcelModal()">📄 Subir Excel</button>
         <button class="btn btn-sm" onclick="sendAllQr()" id="send-all-btn">📧 Enviar QR a todos</button>
+        <button class="btn btn-sm" onclick="downloadReport()">📊 Descargar reporte</button>
       </div>
       <div class="search-bar" style="margin:0; max-width:280px; flex:1;">
         <input type="text" placeholder="Buscar..." id="search-input" oninput="handleSearch()">
@@ -565,6 +566,25 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       } finally {
         btn.disabled = false;
         btn.textContent = '📧 Enviar QR a todos';
+      }
+    }
+
+    async function downloadReport() {
+      try {
+        const token = (await supabase.auth.getSession()).data.session.access_token;
+        const resp = await fetch(`${CONFIG.API_URL}/api/events/${slug}/report`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!resp.ok) throw new Error('Error al generar reporte');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${slug}-reporte.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
       }
     }
 
