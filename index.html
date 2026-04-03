@@ -1,53 +1,420 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Colectivo — Ticketing & Access Control</title>
-  <link rel="stylesheet" href="/assets/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>COLECTIVO.LIVE</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    .landing {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 24px;
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0c0c0c;
+      overflow: hidden;
+      cursor: default;
     }
-    .landing-brand {
-      font-size: 14px;
-      letter-spacing: 6px;
-      text-transform: uppercase;
-      font-weight: 600;
-      margin-bottom: 16px;
-    }
-    .landing-tagline {
-      font-size: 1.25rem;
-      color: var(--text-secondary);
-      margin-bottom: 48px;
-      max-width: 400px;
-    }
-    .landing-actions {
-      display: flex;
-      gap: 12px;
-    }
-    .landing-footer {
-      position: fixed;
-      bottom: 24px;
-      color: var(--text-muted);
-      font-size: 12px;
+    canvas { display: block; }
+    /* Font preload trick — force browser to load JetBrains Mono before sketch runs */
+    #font-preload {
+      position: fixed; top: -999px; left: -999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 400; font-size: 1px; opacity: 0;
     }
   </style>
 </head>
 <body>
-  <div class="landing">
-    <h1 class="landing-brand">Colectivo</h1>
-    <p class="landing-tagline">Ticketing & access control para promotores independientes</p>
-    <div class="landing-actions">
-      <a href="/login.html" class="btn btn-primary">Entrar</a>
-    </div>
-    <div class="landing-footer">colectivo.live</div>
-  </div>
+  <div id="font-preload">.</div>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <!-- p5.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+  <script>
+  // ── Auth init ──────────────────────────────────────────────────────────────
+  Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+  // ── Data pool for stream columns ───────────────────────────────────────────
+  const DATA_POOL = [
+    'PDM / FRONTÓN_BUCARELLI / 26_MAR_2026',
+    'REVENUE ████████████ $1,847,230',
+    'NET ███████████████ +$724,390 ✓',
+    'ATTENDANCE 1,247 / 1,300 [95.9%]',
+    'PAYMENT: AUDIO_SYSTEM $142,000 PAGADO ✓',
+    'JEFF_MILLS / 13_NOV_2026 / CONTRACTED',
+    'TASK: FLYER_ARTWORK / PENDING → AMARANTA',
+    'QR_SCAN: GUEST_0847 VIP 21:34:07',
+    'SETTLEMENT: FEVER $1,204,500 RECONCILED',
+    'PAYMENT: BOOKING_FEE $280,000 PAGADO ✓',
+    'WHO_MADE_WHO / FRONTÓN_BUCARELLI',
+    'TASK: VENUE_PERMIT / OK ✓',
+    'JIMMY_JULES / 17_APR_2026 / PRE-PRODUCTION',
+    'BARRAS_ESTIMATE $340,000 PENDING',
+    'TASK: SEGURIDAD_BRIEF / OVERDUE ⚠',
+    'PAYMENT: ILUMINACION $89,500 EN_OFICINA',
+    'GUEST: RAFA_DORADO / VIP / CHECKED_IN ✓',
+    'RHYE / TBD / EXPLORING',
+    'TASK: ARTIST_CONTRACT / OK ✓',
+    'GUEST_COUNT: 847 SCANNED / 1200 TOTAL',
+    'CLAU: PAYMENT_CONFIRMED → UPDATED ✓',
+    'SHOW: COLECTIVO.LIVE OPERATIONS_OS',
+    'TASK: STAGE_PLOT / PENDING → OPS',
+    'PAYMENT: CATERING $34,500 PAGADO ✓',
+    'SCAN: STAFF_0012 ACCESS_OK 22:11:44',
+    'BUDGET: PRODUCCION $420,000 / $390,000',
+    'NET_MARGIN 39.2% ▲ VS_PROJECTED +4.1%',
+    'COLECTIVO_OPS / RUNNING / UPTIME_99.9%',
+  ];
+
+  const NOISE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789█▓░$/_. :#@!%&?';
+
+  // ── Highlight tokens ───────────────────────────────────────────────────────
+  const HIGHLIGHT_TOKENS = ['✓', '⚠', 'PAGADO', 'OK', 'RECONCILED', 'CHECKED_IN',
+    'CONTRACTED', 'RUNNING', 'UPTIME_99.9%'];
+
+  // ── p5 sketch ──────────────────────────────────────────────────────────────
+  new p5(function(p) {
+
+    // ── State ────────────────────────────────────────────────────────────────
+    const PHASE = { NOISE: 0, STREAMS: 1, SWEEP: 2, TYPING: 3, PROMPT: 4, DONE: 5 };
+    let phase = PHASE.NOISE;
+    let startTime = 0;
+
+    // Noise grid
+    let noiseGrid = [];
+    const NOISE_COLS = 80;
+    const NOISE_ROWS = 40;
+
+    // Stream columns
+    let columns = [];
+    let colCount = 8;
+    const STREAM_FONT_SIZE = 11;
+    const LINE_H = 16;
+
+    // Post-sweep fade (0 = fully faded)
+    let streamAlpha = 1.0;
+
+    // Sweep
+    let sweepY = 0;
+
+    // Typing
+    const LINE1 = 'COLECTIVO.LIVE';
+    const LINE2 = 'OPERATIONS OS FOR LIVE EVENTS';
+    let typed1 = 0;
+    let typed2 = 0;
+    let typingStarted1 = false;
+    let typingStarted2 = false;
+    let line1Done = false;
+    let line2Done = false;
+    let typeTimer = 0;
+    const TYPE_DELAY = 38; // ms per char
+
+    // Prompt
+    let promptVisible = false;
+    let hintVisible = false;
+    let hintAlpha = 0;
+    let cursorOn = true;
+    let cursorTimer = 0;
+    const CURSOR_BLINK = 530;
+
+    // Interaction lock — only respond after prompt
+    let interactive = false;
+    let redirecting = false;
+
+    // ── Preload ──────────────────────────────────────────────────────────────
+    p.preload = function() {};
+
+    // ── Setup ────────────────────────────────────────────────────────────────
+    p.setup = function() {
+      p.createCanvas(p.windowWidth, p.windowHeight);
+      p.textFont('JetBrains Mono');
+      startTime = p.millis();
+      buildNoiseGrid();
+      buildColumns();
+    };
+
+    p.windowResized = function() {
+      p.resizeCanvas(p.windowWidth, p.windowHeight);
+      buildColumns();
+    };
+
+    // ── Build noise grid ─────────────────────────────────────────────────────
+    function buildNoiseGrid() {
+      noiseGrid = [];
+      for (let r = 0; r < NOISE_ROWS; r++) {
+        noiseGrid[r] = [];
+        for (let c = 0; c < NOISE_COLS; c++) {
+          noiseGrid[r][c] = NOISE_CHARS[Math.floor(Math.random() * NOISE_CHARS.length)];
+        }
+      }
+    }
+
+    // ── Build stream columns ─────────────────────────────────────────────────
+    function buildColumns() {
+      colCount = p.width < 600 ? 4 : 8;
+      const colW = p.width / colCount;
+      columns = [];
+      for (let i = 0; i < colCount; i++) {
+        const pool = shuffled([...DATA_POOL]);
+        const lines = [];
+        for (let j = 0; j < 40; j++) lines.push(pool[j % pool.length]);
+        columns.push({
+          x: colW * i + colW * 0.05,
+          y: -Math.random() * p.height,
+          lines,
+          speed: 0.4 + Math.random() * 0.3,
+        });
+      }
+    }
+
+    function shuffled(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // ── Draw ─────────────────────────────────────────────────────────────────
+    p.draw = function() {
+      const t = p.millis() - startTime;
+
+      // Phase transitions
+      if (phase === PHASE.NOISE    && t > 1500) { phase = PHASE.STREAMS; }
+      if (phase === PHASE.STREAMS  && t > 5000) { phase = PHASE.SWEEP; sweepY = 0; }
+      if (phase === PHASE.SWEEP    && sweepY > p.height + 60) { phase = PHASE.TYPING; typeTimer = p.millis(); }
+
+      p.background(12, 12, 12); // #0c0c0c
+
+      // ── Phase: NOISE ──────────────────────────────────────────────────────
+      if (phase === PHASE.NOISE) {
+        drawNoise(t);
+      }
+
+      // ── Phase: STREAMS ────────────────────────────────────────────────────
+      if (phase === PHASE.STREAMS) {
+        const fadeIn = p.constrain((t - 1500) / 800, 0, 1);
+        drawStreams(1.0, fadeIn);
+      }
+
+      // ── Phase: SWEEP ─────────────────────────────────────────────────────
+      if (phase === PHASE.SWEEP) {
+        const sweepDur = 800;
+        const elapsed  = t - 5000;
+        sweepY = (elapsed / sweepDur) * (p.height + 60) - 30;
+        streamAlpha = p.constrain(1.0 - elapsed / sweepDur, 0, 1);
+        drawStreams(streamAlpha, 1.0);
+        drawSweep(sweepY);
+      }
+
+      // ── Phase: TYPING + PROMPT ────────────────────────────────────────────
+      if (phase === PHASE.TYPING || phase === PHASE.PROMPT || phase === PHASE.DONE) {
+        // Streams continue faintly
+        drawStreams(0.08, 1.0);
+        drawTyping();
+      }
+
+      // Scroll streams every frame when active
+      if (phase === PHASE.STREAMS || phase === PHASE.SWEEP || phase >= PHASE.TYPING) {
+        scrollStreams();
+      }
+    };
+
+    // ── Draw noise ────────────────────────────────────────────────────────────
+    function drawNoise(t) {
+      const cellW = p.width  / NOISE_COLS;
+      const cellH = p.height / NOISE_ROWS;
+      p.textSize(Math.min(cellW, cellH) * 0.6);
+      p.noStroke();
+
+      // Flicker ~30% of chars each frame
+      for (let r = 0; r < NOISE_ROWS; r++) {
+        for (let c = 0; c < NOISE_COLS; c++) {
+          if (Math.random() < 0.3) {
+            noiseGrid[r][c] = NOISE_CHARS[Math.floor(Math.random() * NOISE_CHARS.length)];
+          }
+          p.fill(28, 28, 28); // #1c1c1c
+          p.text(noiseGrid[r][c], c * cellW + cellW * 0.1, r * cellH + cellH * 0.75);
+        }
+      }
+    }
+
+    // ── Draw stream columns ───────────────────────────────────────────────────
+    function drawStreams(alpha, fadeIn) {
+      if (alpha <= 0) return;
+      p.noStroke();
+      const fontSize = p.width < 600 ? 9 : STREAM_FONT_SIZE;
+      p.textSize(fontSize);
+      p.textAlign(p.LEFT, p.TOP);
+      const colW = p.width / colCount;
+
+      for (let ci = 0; ci < columns.length; ci++) {
+        const col = columns[ci];
+        for (let li = 0; li < col.lines.length; li++) {
+          const lineY = col.y + li * LINE_H;
+          if (lineY < -LINE_H || lineY > p.height + LINE_H) continue;
+          const line = col.lines[li];
+
+          // Check if line has a highlight token
+          const isHighlight = HIGHLIGHT_TOKENS.some(tok => line.includes(tok));
+          const baseA  = 42  * alpha * fadeIn;  // #2a4a2a
+          const highA  = 61  * alpha * fadeIn;  // #3d6b3d
+
+          if (isHighlight) p.fill(61 * fadeIn * alpha, 107 * fadeIn * alpha, 61 * fadeIn * alpha);
+          else             p.fill(42 * fadeIn * alpha, 74  * fadeIn * alpha, 42 * fadeIn * alpha);
+
+          p.text(line, col.x, lineY, colW * 0.9, LINE_H * 2);
+        }
+      }
+    }
+
+    function scrollStreams() {
+      for (let ci = 0; ci < columns.length; ci++) {
+        const col = columns[ci];
+        col.y -= col.speed;
+        // Wrap: when top line scrolls off top, reset y
+        const totalH = col.lines.length * LINE_H;
+        if (col.y + totalH < 0) col.y = 0;
+      }
+    }
+
+    // ── Draw sweep ────────────────────────────────────────────────────────────
+    function drawSweep(sy) {
+      // Glow above/below
+      for (let i = 30; i > 0; i--) {
+        const a = p.map(i, 0, 30, 0, 38);
+        p.noStroke();
+        p.fill(255, 68, 68, a);
+        p.rect(0, sy - i, p.width, 1);
+        p.fill(255, 68, 68, a * 0.5);
+        p.rect(0, sy + i, p.width, 1);
+      }
+      // Core line
+      p.noStroke();
+      p.fill(255, 68, 68, 220);
+      p.rect(0, sy - 1, p.width, 2);
+    }
+
+    // ── Draw typing + prompt ──────────────────────────────────────────────────
+    function drawTyping() {
+      const now = p.millis();
+      const cx  = p.width  / 2;
+      const cy  = p.height / 2;
+      p.textAlign(p.CENTER, p.CENTER);
+
+      // Responsive sizes
+      const size1 = p.constrain(p.width * 0.04, 28, 52);
+      const size2 = p.constrain(p.width * 0.014, 11, 16);
+      const gap   = size1 * 1.2;
+
+      // ── Line 1 typing ─────────────────────────────────────────────────────
+      if (!typingStarted1) { typingStarted1 = true; }
+      if (typed1 < LINE1.length) {
+        if (now - typeTimer >= TYPE_DELAY) {
+          typed1++;
+          typeTimer = now;
+        }
+      } else {
+        line1Done = true;
+      }
+
+      // ── Line 2 typing (300ms after line 1 done) ───────────────────────────
+      if (line1Done && !typingStarted2) {
+        if (now - typeTimer >= 300) { typingStarted2 = true; typeTimer = now; }
+      }
+      if (typingStarted2 && typed2 < LINE2.length) {
+        if (now - typeTimer >= TYPE_DELAY) {
+          typed2++;
+          typeTimer = now;
+        }
+      } else if (typingStarted2) {
+        line2Done = true;
+      }
+
+      // ── Prompt (400ms after line 2 done) ─────────────────────────────────
+      if (line2Done && !promptVisible) {
+        if (now - typeTimer >= 400) {
+          promptVisible = true;
+          interactive   = true;
+          phase         = PHASE.PROMPT;
+          typeTimer     = now;
+          cursorTimer   = now;
+        }
+      }
+
+      // ── Hint text (800ms after prompt) ───────────────────────────────────
+      if (promptVisible && !hintVisible) {
+        if (now - typeTimer >= 800) { hintVisible = true; }
+      }
+      if (hintVisible && hintAlpha < 255) {
+        hintAlpha = p.min(hintAlpha + 4, 255);
+      }
+
+      // ── Cursor blink ──────────────────────────────────────────────────────
+      if (promptVisible && now - cursorTimer >= CURSOR_BLINK) {
+        cursorOn    = !cursorOn;
+        cursorTimer = now;
+      }
+
+      // ── Render ───────────────────────────────────────────────────────────
+      p.noStroke();
+
+      // Line 1
+      p.textFont('JetBrains Mono');
+      p.textStyle(p.BOLD);
+      p.textSize(size1);
+      p.fill(255, 255, 255);
+      p.text(LINE1.slice(0, typed1), cx, cy - gap * 0.6);
+
+      // Line 2
+      p.textStyle(p.NORMAL);
+      p.textSize(size2);
+      p.fill(102, 102, 102);
+      p.text(LINE2.slice(0, typed2), cx, cy + gap * 0.2);
+
+      // Prompt
+      if (promptVisible) {
+        p.textStyle(p.BOLD);
+        p.textSize(size1);
+        p.fill(255, 68, 68);
+        const cursor = cursorOn ? '$ _' : '$ ';
+        p.text(cursor, cx, cy + gap * 1.4);
+
+        // Hint
+        if (hintAlpha > 0) {
+          p.textStyle(p.NORMAL);
+          p.textSize(10);
+          p.fill(51, 51, 51, hintAlpha);
+          p.textLetterSpacing = 0.2; // not a p5 method, just for reference
+          p.text('PRESS ANY KEY OR CLICK TO ACCESS', cx, cy + gap * 1.4 + 60);
+        }
+      }
+
+      // Reset align
+      p.textAlign(p.LEFT, p.BASELINE);
+    }
+
+    // ── Interaction ───────────────────────────────────────────────────────────
+    async function handleInteract() {
+      if (!interactive || redirecting) return;
+      redirecting = true;
+      interactive = false;
+
+      try {
+        const session = await Auth.getSession();
+        window.location.href = session ? '/dashboard.html' : '/login.html';
+      } catch (e) {
+        window.location.href = '/login.html';
+      }
+    }
+
+    p.mousePressed = function() { handleInteract(); };
+    p.touchStarted = function() { handleInteract(); return false; };
+    p.keyPressed   = function() { handleInteract(); };
+
+  }); // end p5 sketch
+  </script>
 </body>
 </html>
