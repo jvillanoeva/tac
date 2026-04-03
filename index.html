@@ -38,17 +38,16 @@
       letter-spacing: 0.01em;
     }
 
-    .word {
+    .char {
       display: inline;
       font-style: italic;
       font-size: clamp(1.6rem, 3vw, 2.8rem);
       color: #111111;
       opacity: 0;
-      transition: opacity 400ms ease;
+      transition: opacity 120ms ease;
+      white-space: pre;
     }
-    /* space between words */
-    .word::after { content: ' '; }
-    .word.visible { opacity: 1; }
+    .char.visible { opacity: 1; }
 
     #author-block {
       margin-top: 2.2rem;
@@ -149,8 +148,8 @@
 
   let state        = STATE.SILENCE;
   let quoteIndex   = 0;
-  let wordIndex    = 0;
-  let wordSpans    = [];
+  let charIndex    = 0;
+  let charSpans    = [];
   let wordTimer    = null;
   let stateTimer   = null;
   let inactiveTimer = null;
@@ -180,7 +179,7 @@
   function startQuote(index) {
     clearTimers();
     quoteIndex = ((index % quotes.length) + quotes.length) % quotes.length;
-    wordIndex  = 0;
+    charIndex  = 0;
 
     // Clear DOM
     quoteBlock.innerHTML  = '';
@@ -200,31 +199,31 @@
   function buildWords() {
     setState(STATE.WORDS);
     const q = quotes[quoteIndex];
-    const words = q.text.split(' ');
-    wordSpans = [];
+    const chars = q.text.split('');
+    charSpans = [];
 
     // Build all spans invisible
-    words.forEach((w, i) => {
+    chars.forEach((c) => {
       const span = document.createElement('span');
-      span.className = 'word';
-      span.textContent = w;
+      span.className = 'char';
+      span.textContent = c;
       quoteBlock.appendChild(span);
-      wordSpans.push(span);
+      charSpans.push(span);
     });
 
-    // Materialize word by word
-    showNextWord();
+    // Materialize character by character
+    showNextChar();
   }
 
-  function showNextWord() {
-    if (wordIndex >= wordSpans.length) {
-      // All words shown — wait for last transition to settle then show author
+  function showNextChar() {
+    if (charIndex >= charSpans.length) {
+      // All chars shown — wait then show author
       stateTimer = setTimeout(showAuthor, 800);
       return;
     }
-    wordSpans[wordIndex].classList.add('visible');
-    wordIndex++;
-    wordTimer = setTimeout(showNextWord, 160);
+    charSpans[charIndex].classList.add('visible');
+    charIndex++;
+    wordTimer = setTimeout(showNextChar, 45);
   }
 
   function showAuthor() {
