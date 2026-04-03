@@ -111,7 +111,7 @@
 
   <script>
   // ── Auth init ──────────────────────────────────────────────────────────────
-  Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  try { Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY); } catch (e) { console.warn('Auth init:', e); }
 
   // ── Quote pool ─────────────────────────────────────────────────────────────
   const quotes = [
