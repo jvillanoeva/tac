@@ -3,418 +3,337 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>COLECTIVO.LIVE</title>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <title>Colectivo</title>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/auth.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
     html, body {
-      width: 100%; height: 100%;
-      background: #0c0c0c;
-      overflow: hidden;
+      width: 100%; min-height: 100%;
+      background: #fafaf8;
+      font-family: 'EB Garamond', Georgia, serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
       cursor: default;
+      user-select: none;
     }
-    canvas { display: block; }
-    /* Font preload trick — force browser to load JetBrains Mono before sketch runs */
-    #font-preload {
-      position: fixed; top: -999px; left: -999px;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 400; font-size: 1px; opacity: 0;
+
+    #stage {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding-top: 12vh;
+      padding-left: 8vw;
+      padding-right: 8vw;
+    }
+
+    #quote-block {
+      max-width: 62ch;
+      line-height: 1.55;
+      letter-spacing: 0.01em;
+    }
+
+    .word {
+      display: inline;
+      font-style: italic;
+      font-size: clamp(1.6rem, 3vw, 2.8rem);
+      color: #111111;
+      opacity: 0;
+      transition: opacity 400ms ease;
+    }
+    /* space between words */
+    .word::after { content: ' '; }
+    .word.visible { opacity: 1; }
+
+    #author-block {
+      margin-top: 2.2rem;
+      font-style: normal;
+      font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+      color: #555555;
+      letter-spacing: 0.08em;
+      line-height: 1.4;
+      opacity: 0;
+      transition: opacity 600ms ease;
+    }
+    #author-block.visible { opacity: 1; }
+
+    #prompt-block {
+      position: fixed;
+      bottom: 8vh;
+      left: 8vw;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.75rem;
+      color: #999999;
+      letter-spacing: 0.04em;
+      opacity: 0;
+      transition: opacity 500ms ease;
+    }
+    #prompt-block.visible { opacity: 1; }
+
+    #cursor {
+      display: inline-block;
+      opacity: 1;
+      transition: opacity 80ms ease;
+    }
+    #cursor.hidden { opacity: 0; }
+
+    /* Mobile overrides */
+    @media (max-width: 600px) {
+      #stage {
+        padding-top: 10vh;
+        padding-left: 6vw;
+        padding-right: 6vw;
+      }
+      .word {
+        font-size: clamp(1.4rem, 5vw, 2rem);
+      }
+      #prompt-block {
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="font-preload">.</div>
 
-  <!-- Supabase SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="/assets/js/config.js"></script>
-  <script src="/assets/js/auth.js"></script>
-  <!-- p5.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <div id="stage">
+    <div id="quote-block"></div>
+    <div id="author-block"></div>
+  </div>
+
+  <div id="prompt-block">login (y/n)&nbsp;<span id="cursor">_</span></div>
 
   <script>
   // ── Auth init ──────────────────────────────────────────────────────────────
   Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
-  // ── Data pool for stream columns ───────────────────────────────────────────
-  const DATA_POOL = [
-    'PDM / FRONTÓN_BUCARELLI / 26_MAR_2026',
-    'REVENUE ████████████ $1,847,230',
-    'NET ███████████████ +$724,390 ✓',
-    'ATTENDANCE 1,247 / 1,300 [95.9%]',
-    'PAYMENT: AUDIO_SYSTEM $142,000 PAGADO ✓',
-    'JEFF_MILLS / 13_NOV_2026 / CONTRACTED',
-    'TASK: FLYER_ARTWORK / PENDING → AMARANTA',
-    'QR_SCAN: GUEST_0847 VIP 21:34:07',
-    'SETTLEMENT: FEVER $1,204,500 RECONCILED',
-    'PAYMENT: BOOKING_FEE $280,000 PAGADO ✓',
-    'WHO_MADE_WHO / FRONTÓN_BUCARELLI',
-    'TASK: VENUE_PERMIT / OK ✓',
-    'JIMMY_JULES / 17_APR_2026 / PRE-PRODUCTION',
-    'BARRAS_ESTIMATE $340,000 PENDING',
-    'TASK: SEGURIDAD_BRIEF / OVERDUE ⚠',
-    'PAYMENT: ILUMINACION $89,500 EN_OFICINA',
-    'GUEST: RAFA_DORADO / VIP / CHECKED_IN ✓',
-    'RHYE / TBD / EXPLORING',
-    'TASK: ARTIST_CONTRACT / OK ✓',
-    'GUEST_COUNT: 847 SCANNED / 1200 TOTAL',
-    'CLAU: PAYMENT_CONFIRMED → UPDATED ✓',
-    'SHOW: COLECTIVO.LIVE OPERATIONS_OS',
-    'TASK: STAGE_PLOT / PENDING → OPS',
-    'PAYMENT: CATERING $34,500 PAGADO ✓',
-    'SCAN: STAFF_0012 ACCESS_OK 22:11:44',
-    'BUDGET: PRODUCCION $420,000 / $390,000',
-    'NET_MARGIN 39.2% ▲ VS_PROJECTED +4.1%',
-    'COLECTIVO_OPS / RUNNING / UPTIME_99.9%',
+  // ── Quote pool ─────────────────────────────────────────────────────────────
+  const quotes = [
+    {
+      text: "The economy should be a servant to culture.",
+      author: "Soichiro Fukutake"
+    },
+    {
+      text: "Scenius stands for the intelligence and the intuition of a whole cultural scene. It is the communal form of the concept of the genius.",
+      author: "Brian Eno"
+    },
+    {
+      text: "The very idea of an exhibition is that we live in a world with each other, in which it is possible to make arrangements, associations, connections and wordless gestures, and, through this mise en scène, to speak.",
+      author: "Hans Ulrich Obrist"
+    },
+    {
+      text: "The required collective subject does not exist yet — and yet the crisis demands that it be constructed.",
+      author: "Mark Fisher"
+    },
+    {
+      text: "It is about making commitments, tying oneself down, and giving oneself away.",
+      author: "David Brooks"
+    }
   ];
 
-  const NOISE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789█▓░$/_. :#@!%&?';
+  // ── State machine ──────────────────────────────────────────────────────────
+  const STATE = {
+    SILENCE:  'silence',
+    WORDS:    'words',
+    AUTHOR:   'author',
+    PROMPT:   'prompt',
+    WAITING:  'waiting',
+    EXITING:  'exiting',
+  };
 
-  // ── Highlight tokens ───────────────────────────────────────────────────────
-  const HIGHLIGHT_TOKENS = ['✓', '⚠', 'PAGADO', 'OK', 'RECONCILED', 'CHECKED_IN',
-    'CONTRACTED', 'RUNNING', 'UPTIME_99.9%'];
+  let state        = STATE.SILENCE;
+  let quoteIndex   = 0;
+  let wordIndex    = 0;
+  let wordSpans    = [];
+  let wordTimer    = null;
+  let stateTimer   = null;
+  let inactiveTimer = null;
+  let redirecting  = false;
+  let cursorInterval = null;
+  let touchStartX  = 0;
 
-  // ── p5 sketch ──────────────────────────────────────────────────────────────
-  new p5(function(p) {
+  const quoteBlock  = document.getElementById('quote-block');
+  const authorBlock = document.getElementById('author-block');
+  const promptBlock = document.getElementById('prompt-block');
+  const cursorEl    = document.getElementById('cursor');
 
-    // ── State ────────────────────────────────────────────────────────────────
-    const PHASE = { NOISE: 0, STREAMS: 1, SWEEP: 2, TYPING: 3, PROMPT: 4, DONE: 5 };
-    let phase = PHASE.NOISE;
-    let startTime = 0;
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function clearTimers() {
+    clearTimeout(wordTimer);
+    clearTimeout(stateTimer);
+    clearTimeout(inactiveTimer);
+    clearInterval(cursorInterval);
+    wordTimer = stateTimer = inactiveTimer = cursorInterval = null;
+  }
 
-    // Noise grid
-    let noiseGrid = [];
-    const NOISE_COLS = 80;
-    const NOISE_ROWS = 40;
+  function setState(s) {
+    state = s;
+  }
 
-    // Stream columns
-    let columns = [];
-    let colCount = 8;
-    const STREAM_FONT_SIZE = 11;
-    const LINE_H = 16;
+  // ── Start a quote ──────────────────────────────────────────────────────────
+  function startQuote(index) {
+    clearTimers();
+    quoteIndex = ((index % quotes.length) + quotes.length) % quotes.length;
+    wordIndex  = 0;
 
-    // Post-sweep fade (0 = fully faded)
-    let streamAlpha = 1.0;
+    // Clear DOM
+    quoteBlock.innerHTML  = '';
+    authorBlock.classList.remove('visible');
+    authorBlock.textContent = '';
+    promptBlock.classList.remove('visible');
+    cursorEl.classList.remove('hidden');
 
-    // Sweep
-    let sweepY = 0;
+    setState(STATE.SILENCE);
 
-    // Typing
-    const LINE1 = 'COLECTIVO.LIVE';
-    const LINE2 = 'OPERATIONS OS FOR LIVE EVENTS';
-    let typed1 = 0;
-    let typed2 = 0;
-    let typingStarted1 = false;
-    let typingStarted2 = false;
-    let line1Done = false;
-    let line2Done = false;
-    let typeTimer = 0;
-    const TYPE_DELAY = 38; // ms per char
+    // Phase 1: silence
+    stateTimer = setTimeout(() => {
+      buildWords();
+    }, 400);
+  }
 
-    // Prompt
-    let promptVisible = false;
-    let hintVisible = false;
-    let hintAlpha = 0;
-    let cursorOn = true;
-    let cursorTimer = 0;
-    const CURSOR_BLINK = 530;
+  function buildWords() {
+    setState(STATE.WORDS);
+    const q = quotes[quoteIndex];
+    const words = q.text.split(' ');
+    wordSpans = [];
 
-    // Interaction lock — only respond after prompt
-    let interactive = false;
-    let redirecting = false;
+    // Build all spans invisible
+    words.forEach((w, i) => {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.textContent = w;
+      quoteBlock.appendChild(span);
+      wordSpans.push(span);
+    });
 
-    // ── Preload ──────────────────────────────────────────────────────────────
-    p.preload = function() {};
+    // Materialize word by word
+    showNextWord();
+  }
 
-    // ── Setup ────────────────────────────────────────────────────────────────
-    p.setup = function() {
-      p.createCanvas(p.windowWidth, p.windowHeight);
-      p.textFont('JetBrains Mono');
-      startTime = p.millis();
-      buildNoiseGrid();
-      buildColumns();
-    };
-
-    p.windowResized = function() {
-      p.resizeCanvas(p.windowWidth, p.windowHeight);
-      buildColumns();
-    };
-
-    // ── Build noise grid ─────────────────────────────────────────────────────
-    function buildNoiseGrid() {
-      noiseGrid = [];
-      for (let r = 0; r < NOISE_ROWS; r++) {
-        noiseGrid[r] = [];
-        for (let c = 0; c < NOISE_COLS; c++) {
-          noiseGrid[r][c] = NOISE_CHARS[Math.floor(Math.random() * NOISE_CHARS.length)];
-        }
-      }
+  function showNextWord() {
+    if (wordIndex >= wordSpans.length) {
+      // All words shown — wait for last transition to settle then show author
+      stateTimer = setTimeout(showAuthor, 800);
+      return;
     }
+    wordSpans[wordIndex].classList.add('visible');
+    wordIndex++;
+    wordTimer = setTimeout(showNextWord, 160);
+  }
 
-    // ── Build stream columns ─────────────────────────────────────────────────
-    function buildColumns() {
-      colCount = p.width < 600 ? 4 : 8;
-      const colW = p.width / colCount;
-      columns = [];
-      for (let i = 0; i < colCount; i++) {
-        const pool = shuffled([...DATA_POOL]);
-        const lines = [];
-        for (let j = 0; j < 40; j++) lines.push(pool[j % pool.length]);
-        columns.push({
-          x: colW * i + colW * 0.05,
-          y: -Math.random() * p.height,
-          lines,
-          speed: 0.4 + Math.random() * 0.3,
-        });
-      }
+  function showAuthor() {
+    setState(STATE.AUTHOR);
+    const q = quotes[quoteIndex];
+    authorBlock.textContent = '— ' + q.author;
+    authorBlock.classList.add('visible');
+    stateTimer = setTimeout(showPrompt, 600);
+  }
+
+  function showPrompt() {
+    setState(STATE.PROMPT);
+    promptBlock.classList.add('visible');
+
+    // Cursor starts blinking after 1.5s
+    stateTimer = setTimeout(() => {
+      setState(STATE.WAITING);
+      startCursorBlink();
+      startInactiveTimer();
+    }, 1500);
+  }
+
+  function startCursorBlink() {
+    cursorInterval = setInterval(() => {
+      cursorEl.classList.toggle('hidden');
+    }, 800);
+  }
+
+  function startInactiveTimer() {
+    inactiveTimer = setTimeout(() => {
+      if (state === STATE.WAITING) nextQuote();
+    }, 18000);
+  }
+
+  // ── Next quote ─────────────────────────────────────────────────────────────
+  function nextQuote() {
+    if (state === STATE.EXITING) return;
+    setState(STATE.EXITING);
+    clearTimers();
+
+    // Fade out quote + author together
+    quoteBlock.style.transition  = 'opacity 500ms ease';
+    authorBlock.style.transition = 'opacity 500ms ease';
+    promptBlock.style.transition = 'opacity 300ms ease';
+    quoteBlock.style.opacity     = '0';
+    authorBlock.style.opacity    = '0';
+    promptBlock.style.opacity    = '0';
+
+    setTimeout(() => {
+      // Reset inline styles
+      quoteBlock.style.transition  = '';
+      quoteBlock.style.opacity     = '';
+      authorBlock.style.transition = '';
+      authorBlock.style.opacity    = '';
+      promptBlock.style.transition = '';
+      promptBlock.style.opacity    = '';
+      startQuote(quoteIndex + 1);
+    }, 520);
+  }
+
+  // ── Enter ──────────────────────────────────────────────────────────────────
+  async function handleEnter() {
+    if (redirecting) return;
+    redirecting = true;
+    clearTimers();
+
+    try {
+      const session = await Auth.getSession();
+      window.location.href = session ? '/dashboard.html' : '/login.html';
+    } catch (e) {
+      window.location.href = '/login.html';
     }
+  }
 
-    function shuffled(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
+  // ── Keyboard ───────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (state !== STATE.WAITING) return;
+    if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') handleEnter();
+    if (e.key === 'n' || e.key === 'N') nextQuote();
+  });
+
+  // ── Click ──────────────────────────────────────────────────────────────────
+  document.addEventListener('click', () => {
+    if (state === STATE.WAITING) handleEnter();
+  });
+
+  // ── Touch swipe left = N ───────────────────────────────────────────────────
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 60) {
+      // Swipe — treat as N (next)
+      if (state === STATE.WAITING) nextQuote();
+    } else {
+      // Tap — treat as Y (enter)
+      if (state === STATE.WAITING) handleEnter();
     }
+  }, { passive: true });
 
-    // ── Draw ─────────────────────────────────────────────────────────────────
-    p.draw = function() {
-      const t = p.millis() - startTime;
-
-      // Phase transitions
-      if (phase === PHASE.NOISE    && t > 1500) { phase = PHASE.STREAMS; }
-      if (phase === PHASE.STREAMS  && t > 5000) { phase = PHASE.SWEEP; sweepY = 0; }
-      if (phase === PHASE.SWEEP    && sweepY > p.height + 60) { phase = PHASE.TYPING; typeTimer = p.millis(); }
-
-      p.background(12, 12, 12); // #0c0c0c
-
-      // ── Phase: NOISE ──────────────────────────────────────────────────────
-      if (phase === PHASE.NOISE) {
-        drawNoise(t);
-      }
-
-      // ── Phase: STREAMS ────────────────────────────────────────────────────
-      if (phase === PHASE.STREAMS) {
-        const fadeIn = p.constrain((t - 1500) / 800, 0, 1);
-        drawStreams(1.0, fadeIn);
-      }
-
-      // ── Phase: SWEEP ─────────────────────────────────────────────────────
-      if (phase === PHASE.SWEEP) {
-        const sweepDur = 800;
-        const elapsed  = t - 5000;
-        sweepY = (elapsed / sweepDur) * (p.height + 60) - 30;
-        streamAlpha = p.constrain(1.0 - elapsed / sweepDur, 0, 1);
-        drawStreams(streamAlpha, 1.0);
-        drawSweep(sweepY);
-      }
-
-      // ── Phase: TYPING + PROMPT ────────────────────────────────────────────
-      if (phase === PHASE.TYPING || phase === PHASE.PROMPT || phase === PHASE.DONE) {
-        // Streams continue faintly
-        drawStreams(0.08, 1.0);
-        drawTyping();
-      }
-
-      // Scroll streams every frame when active
-      if (phase === PHASE.STREAMS || phase === PHASE.SWEEP || phase >= PHASE.TYPING) {
-        scrollStreams();
-      }
-    };
-
-    // ── Draw noise ────────────────────────────────────────────────────────────
-    function drawNoise(t) {
-      const cellW = p.width  / NOISE_COLS;
-      const cellH = p.height / NOISE_ROWS;
-      p.textSize(Math.min(cellW, cellH) * 0.6);
-      p.noStroke();
-
-      // Flicker ~30% of chars each frame
-      for (let r = 0; r < NOISE_ROWS; r++) {
-        for (let c = 0; c < NOISE_COLS; c++) {
-          if (Math.random() < 0.3) {
-            noiseGrid[r][c] = NOISE_CHARS[Math.floor(Math.random() * NOISE_CHARS.length)];
-          }
-          p.fill(28, 28, 28); // #1c1c1c
-          p.text(noiseGrid[r][c], c * cellW + cellW * 0.1, r * cellH + cellH * 0.75);
-        }
-      }
-    }
-
-    // ── Draw stream columns ───────────────────────────────────────────────────
-    function drawStreams(alpha, fadeIn) {
-      if (alpha <= 0) return;
-      p.noStroke();
-      const fontSize = p.width < 600 ? 9 : STREAM_FONT_SIZE;
-      p.textSize(fontSize);
-      p.textAlign(p.LEFT, p.TOP);
-      const colW = p.width / colCount;
-
-      for (let ci = 0; ci < columns.length; ci++) {
-        const col = columns[ci];
-        for (let li = 0; li < col.lines.length; li++) {
-          const lineY = col.y + li * LINE_H;
-          if (lineY < -LINE_H || lineY > p.height + LINE_H) continue;
-          const line = col.lines[li];
-
-          // Check if line has a highlight token
-          const isHighlight = HIGHLIGHT_TOKENS.some(tok => line.includes(tok));
-          const baseA  = 42  * alpha * fadeIn;  // #2a4a2a
-          const highA  = 61  * alpha * fadeIn;  // #3d6b3d
-
-          if (isHighlight) p.fill(61 * fadeIn * alpha, 107 * fadeIn * alpha, 61 * fadeIn * alpha);
-          else             p.fill(42 * fadeIn * alpha, 74  * fadeIn * alpha, 42 * fadeIn * alpha);
-
-          p.text(line, col.x, lineY, colW * 0.9, LINE_H * 2);
-        }
-      }
-    }
-
-    function scrollStreams() {
-      for (let ci = 0; ci < columns.length; ci++) {
-        const col = columns[ci];
-        col.y -= col.speed;
-        // Wrap: when top line scrolls off top, reset y
-        const totalH = col.lines.length * LINE_H;
-        if (col.y + totalH < 0) col.y = 0;
-      }
-    }
-
-    // ── Draw sweep ────────────────────────────────────────────────────────────
-    function drawSweep(sy) {
-      // Glow above/below
-      for (let i = 30; i > 0; i--) {
-        const a = p.map(i, 0, 30, 0, 38);
-        p.noStroke();
-        p.fill(255, 68, 68, a);
-        p.rect(0, sy - i, p.width, 1);
-        p.fill(255, 68, 68, a * 0.5);
-        p.rect(0, sy + i, p.width, 1);
-      }
-      // Core line
-      p.noStroke();
-      p.fill(255, 68, 68, 220);
-      p.rect(0, sy - 1, p.width, 2);
-    }
-
-    // ── Draw typing + prompt ──────────────────────────────────────────────────
-    function drawTyping() {
-      const now = p.millis();
-      const cx  = p.width  / 2;
-      const cy  = p.height / 2;
-      p.textAlign(p.CENTER, p.CENTER);
-
-      // Responsive sizes
-      const size1 = p.constrain(p.width * 0.04, 28, 52);
-      const size2 = p.constrain(p.width * 0.014, 11, 16);
-      const gap   = size1 * 1.2;
-
-      // ── Line 1 typing ─────────────────────────────────────────────────────
-      if (!typingStarted1) { typingStarted1 = true; }
-      if (typed1 < LINE1.length) {
-        if (now - typeTimer >= TYPE_DELAY) {
-          typed1++;
-          typeTimer = now;
-        }
-      } else {
-        line1Done = true;
-      }
-
-      // ── Line 2 typing (300ms after line 1 done) ───────────────────────────
-      if (line1Done && !typingStarted2) {
-        if (now - typeTimer >= 300) { typingStarted2 = true; typeTimer = now; }
-      }
-      if (typingStarted2 && typed2 < LINE2.length) {
-        if (now - typeTimer >= TYPE_DELAY) {
-          typed2++;
-          typeTimer = now;
-        }
-      } else if (typingStarted2) {
-        line2Done = true;
-      }
-
-      // ── Prompt (400ms after line 2 done) ─────────────────────────────────
-      if (line2Done && !promptVisible) {
-        if (now - typeTimer >= 400) {
-          promptVisible = true;
-          interactive   = true;
-          phase         = PHASE.PROMPT;
-          typeTimer     = now;
-          cursorTimer   = now;
-        }
-      }
-
-      // ── Hint text (800ms after prompt) ───────────────────────────────────
-      if (promptVisible && !hintVisible) {
-        if (now - typeTimer >= 800) { hintVisible = true; }
-      }
-      if (hintVisible && hintAlpha < 255) {
-        hintAlpha = p.min(hintAlpha + 4, 255);
-      }
-
-      // ── Cursor blink ──────────────────────────────────────────────────────
-      if (promptVisible && now - cursorTimer >= CURSOR_BLINK) {
-        cursorOn    = !cursorOn;
-        cursorTimer = now;
-      }
-
-      // ── Render ───────────────────────────────────────────────────────────
-      p.noStroke();
-
-      // Line 1
-      p.textFont('JetBrains Mono');
-      p.textStyle(p.BOLD);
-      p.textSize(size1);
-      p.fill(255, 255, 255);
-      p.text(LINE1.slice(0, typed1), cx, cy - gap * 0.6);
-
-      // Line 2
-      p.textStyle(p.NORMAL);
-      p.textSize(size2);
-      p.fill(102, 102, 102);
-      p.text(LINE2.slice(0, typed2), cx, cy + gap * 0.2);
-
-      // Prompt
-      if (promptVisible) {
-        p.textStyle(p.BOLD);
-        p.textSize(size1);
-        p.fill(255, 68, 68);
-        const cursor = cursorOn ? '$ _' : '$ ';
-        p.text(cursor, cx, cy + gap * 1.4);
-
-        // Hint
-        if (hintAlpha > 0) {
-          p.textStyle(p.NORMAL);
-          p.textSize(10);
-          p.fill(51, 51, 51, hintAlpha);
-          p.textLetterSpacing = 0.2; // not a p5 method, just for reference
-          p.text('PRESS ANY KEY OR CLICK TO ACCESS', cx, cy + gap * 1.4 + 60);
-        }
-      }
-
-      // Reset align
-      p.textAlign(p.LEFT, p.BASELINE);
-    }
-
-    // ── Interaction ───────────────────────────────────────────────────────────
-    async function handleInteract() {
-      if (!interactive || redirecting) return;
-      redirecting = true;
-      interactive = false;
-
-      try {
-        const session = await Auth.getSession();
-        window.location.href = session ? '/dashboard.html' : '/login.html';
-      } catch (e) {
-        window.location.href = '/login.html';
-      }
-    }
-
-    p.mousePressed = function() { handleInteract(); };
-    p.touchStarted = function() { handleInteract(); return false; };
-    p.keyPressed   = function() { handleInteract(); };
-
-  }); // end p5 sketch
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  // Wait for font to load before starting
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => startQuote(0));
+  } else {
+    window.addEventListener('load', () => startQuote(0));
+  }
   </script>
 </body>
 </html>
