@@ -38,15 +38,14 @@
       letter-spacing: 0.01em;
     }
 
-    .char {
-      display: inline;
+    #quote-block {
       font-style: italic;
       font-size: clamp(1.6rem, 3vw, 2.8rem);
       color: #111111;
       opacity: 0;
-      transition: opacity 120ms ease;
+      transition: opacity 700ms ease;
     }
-    .char.visible { opacity: 1; }
+    #quote-block.visible { opacity: 1; }
 
     #author-block {
       margin-top: 2.2rem;
@@ -87,7 +86,7 @@
         padding-left: 6vw;
         padding-right: 6vw;
       }
-      .word {
+      #quote-block {
         font-size: clamp(1.4rem, 5vw, 2rem);
       }
       #prompt-block {
@@ -147,8 +146,6 @@
 
   let state        = STATE.SILENCE;
   let quoteIndex   = 0;
-  let charIndex    = 0;
-  let charSpans    = [];
   let wordTimer    = null;
   let stateTimer   = null;
   let inactiveTimer = null;
@@ -181,7 +178,8 @@
     charIndex  = 0;
 
     // Clear DOM
-    quoteBlock.innerHTML  = '';
+    quoteBlock.classList.remove('visible');
+    quoteBlock.textContent = '';
     authorBlock.classList.remove('visible');
     authorBlock.textContent = '';
     promptBlock.classList.remove('visible');
@@ -198,31 +196,12 @@
   function buildWords() {
     setState(STATE.WORDS);
     const q = quotes[quoteIndex];
-    const chars = q.text.split('');
-    charSpans = [];
-
-    // Build all spans invisible
-    chars.forEach((c) => {
-      const span = document.createElement('span');
-      span.className = 'char';
-      span.textContent = c;
-      quoteBlock.appendChild(span);
-      charSpans.push(span);
-    });
-
-    // Materialize character by character
-    showNextChar();
-  }
-
-  function showNextChar() {
-    if (charIndex >= charSpans.length) {
-      // All chars shown — wait then show author
-      stateTimer = setTimeout(showAuthor, 800);
-      return;
-    }
-    charSpans[charIndex].classList.add('visible');
-    charIndex++;
-    wordTimer = setTimeout(showNextChar, 45);
+    quoteBlock.textContent = q.text;
+    // Trigger reflow so transition fires
+    quoteBlock.getBoundingClientRect();
+    quoteBlock.classList.add('visible');
+    // Wait for fade + reading time, then show author
+    stateTimer = setTimeout(showAuthor, 3500);
   }
 
   function showAuthor() {
