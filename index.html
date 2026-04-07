@@ -36,8 +36,8 @@
     #bouncer {
       position: fixed;
       background: #e8e8e4;
-      width: 89vw;
-      aspect-ratio: 1.618 / 1;
+      width: calc(100vw / 1.618033988);
+      height: calc(100vh / 1.618033988);
       z-index: 0;
       /* top/left set by JS */
     }
@@ -98,11 +98,7 @@
     #cursor.hidden { opacity: 0; }
 
     @media (max-width: 600px) {
-      #bouncer {
-        width: calc(100vw / 1.618033988);
-        height: calc(100vh / 1.618033988);
-        aspect-ratio: unset;
-      }
+      /* mobile inherits same rule — no override needed */
       #text-layer { padding-top: 10vh; padding-left: 6vw; padding-right: 6vw; }
       #quote-block { font-size: clamp(0.8rem, 2.5vw, 1rem); }
       #prompt-block { left: 50%; transform: translateX(-50%); white-space: nowrap; }
