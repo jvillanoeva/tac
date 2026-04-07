@@ -194,15 +194,15 @@
         <div class="stat-label">Total</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value" id="stat-checked">—</div>
+        <div class="stat-value hero" id="stat-checked">—</div>
         <div class="stat-label">Registrados</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value" id="stat-pending">—</div>
+        <div class="stat-value hero" id="stat-pending">—</div>
         <div class="stat-label">Pendientes</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value" id="stat-emails">—</div>
+        <div class="stat-value hero" id="stat-emails">—</div>
         <div class="stat-label">QR enviados</div>
       </div>
     </div>
@@ -481,7 +481,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
       tbody.innerHTML = guests.map(g => `
         <tr>
-          <td><span class="hero" style="font-size:14px;color:#ffffff">${esc(g.name)}</span></td>
+          <td><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e5e7eb">${esc(g.name)}</span></td>
           <td class="text-sm text-secondary">${esc(g.email || '—')}</td>
           <td class="text-sm">${g.tier ? `<span class="badge">${esc(g.tier)}</span>` : '<span class="text-muted text-xs">—</span>'}</td>
           <td class="text-sm text-secondary">${esc(g.notes || '')}</td>
