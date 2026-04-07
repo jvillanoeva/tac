@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Colectivo</title>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=EB+Garamond:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/js/config.js"></script>
   <script src="/assets/js/auth.js"></script>
@@ -14,77 +14,41 @@
     html, body {
       width: 100%; height: 100%;
       background: #fafaf8;
+      font-family: 'EB Garamond', Georgia, serif;
       -webkit-font-smoothing: antialiased;
       cursor: default;
       user-select: none;
     }
 
-    #site-title {
-      position: fixed;
-      top: 6vh;
-      left: 6vw;
-      font-family: 'Archivo Black', sans-serif;
-      font-size: clamp(0.85rem, 1.2vw, 1rem);
-      letter-spacing: 0.14em;
-      color: #111111;
-      text-transform: uppercase;
-    }
-
-    #menu {
+    #stage {
       position: fixed;
       inset: 0;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding-left: 8vw;
-      gap: 3.5vh;
-    }
-
-    .menu-item {
-      display: flex;
       align-items: center;
-      gap: 1rem;
-      text-decoration: none;
-      opacity: 0;
-      animation: fadein 600ms ease forwards;
+      justify-content: center;
+      padding: 0 8vw;
     }
 
-    .menu-item:nth-child(1) { animation-delay: 200ms; }
-    .menu-item:nth-child(2) { animation-delay: 380ms; }
-
-    .menu-item span.label {
-      font-family: 'EB Garamond', Georgia, serif;
-      font-size: clamp(3rem, 7vw, 6.5rem);
-      font-weight: 400;
+    #headline {
+      font-style: italic;
+      font-size: clamp(1.6rem, 3vw, 2.8rem);
       color: #111111;
-      line-height: 1;
-      letter-spacing: -0.01em;
-      transition: opacity 200ms ease;
-    }
-
-    .menu-item:hover span.label { opacity: 0.45; }
-
-    .menu-item .icon {
-      font-size: clamp(1.2rem, 2.5vw, 2rem);
-      line-height: 1;
-      display: inline-block;
-    }
-
-    /* 💸 flies in from off-screen right with a tumble */
-    #icon-admin {
+      line-height: 1.55;
+      letter-spacing: 0.01em;
       opacity: 0;
-      animation: fly-in 700ms cubic-bezier(0.22, 1.8, 0.55, 0.95) 900ms forwards;
+      animation: fadein 800ms ease 300ms forwards;
     }
 
-    @keyframes fly-in {
-      0%   { opacity: 0; transform: translateX(120px) rotate(180deg) scale(0.4); }
-      60%  { opacity: 1; }
-      100% { opacity: 1; transform: translateX(0)    rotate(-12deg)  scale(1); }
-    }
-
-    #icon-project {
+    #sub {
+      margin-top: 1.6rem;
+      font-style: normal;
+      font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+      color: #555555;
+      letter-spacing: 0.08em;
+      line-height: 1.4;
       opacity: 0;
-      animation: fadein 400ms ease 420ms forwards;
+      animation: fadein 800ms ease 900ms forwards;
     }
 
     @keyframes fadein {
@@ -92,25 +56,16 @@
     }
 
     @media (max-width: 600px) {
-      #menu { padding-left: 6vw; gap: 4vh; }
-      .menu-item span.label { font-size: clamp(3rem, 14vw, 5rem); }
+      #headline { font-size: clamp(1.4rem, 5vw, 2rem); }
     }
   </style>
 </head>
 <body>
 
-  <div id="site-title">Colectivo</div>
-
-  <nav id="menu">
-    <a class="menu-item" href="/dashboard.html">
-      <span class="icon" id="icon-admin">💸</span>
-      <span class="label">Admin</span>
-    </a>
-    <a class="menu-item" href="#">
-      <span class="icon" id="icon-project">📋</span>
-      <span class="label">Project</span>
-    </a>
-  </nav>
+  <div id="stage">
+    <div id="headline">Work in progress.</div>
+    <div id="sub">Something is being built here.</div>
+  </div>
 
   <script>
     Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
