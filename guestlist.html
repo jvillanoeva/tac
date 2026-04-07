@@ -4,8 +4,76 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Guestlist — Colectivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/css/style.css">
   <style>
+    /* ── Match pnlm / dashboard header ────────────────────────────── */
+    .nav {
+      height: 56px;
+      padding: 0 32px;
+      background: #111111;
+      border-bottom: 1px solid #1f2937;
+      border-top: none;
+    }
+    .nav-brand {
+      font-family: 'Archivo Black', Arial, sans-serif;
+      font-weight: 400;
+      font-size: 15px;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+      text-transform: uppercase;
+      text-decoration: none;
+    }
+    .nav-brand:hover { color: #ffffff; }
+    .nav-links a, .nav-links a.active, .nav-links a:hover {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .nav-links a:hover { color: #9ca3af; }
+    .nav-links a.active { color: #9ca3af; }
+
+    /* ── Hero font ─────────────────────────────────────────────────── */
+    .hero {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 300;
+      letter-spacing: 0;
+    }
+
+    /* ── Event header ──────────────────────────────────────────────── */
+    .event-header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #1f2937;
+    }
+    #event-name {
+      font-size: 28px;
+      color: #ffffff;
+    }
+    #event-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #6b7280;
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* ── Stat cards ────────────────────────────────────────────────── */
+    .stat-value {
+      font-size: 2rem;
+      color: #ffffff;
+    }
+    .stat-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      color: #4b5563;
+      text-transform: uppercase;
+    }
     .toolbar {
       display: flex;
       gap: 8px;
@@ -96,12 +164,16 @@
 </head>
 <body>
   <nav class="nav">
-    <a href="/dashboard.html" class="nav-brand">Colectivo</a>
+    <div style="display:flex;align-items:center">
+      <a href="/dashboard.html" class="nav-brand">TAC.COLECTIVO</a>
+      <span style="font-family:'IBM Plex Mono',monospace;color:#4b5563;margin:0 10px;font-size:13px">·</span>
+      <span id="nav-event-name" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px"></span>
+    </div>
     <div class="nav-links">
-      <a href="/dashboard.html">← Eventos</a>
-      <a href="#" id="scan-link" class="hidden">Scanner</a>
-      <a href="#" id="edit-link" class="hidden" style="display:none">Editar</a>
-      <a href="#" onclick="Auth.signOut()">Salir</a>
+      <a href="/dashboard.html">← eventos</a>
+      <a href="#" id="scan-link" class="hidden">scanner</a>
+      <a href="#" id="edit-link" class="hidden" style="display:none">editar</a>
+      <a href="#" onclick="Auth.signOut()">salir</a>
     </div>
   </nav>
 
@@ -109,7 +181,7 @@
     <!-- Event header -->
     <div class="event-header">
       <div>
-        <h1 id="event-name">Cargando...</h1>
+        <h1 id="event-name" class="hero">Cargando...</h1>
         <span class="text-sm text-secondary" id="event-meta"></span>
       </div>
       <div id="event-badge"></div>
@@ -118,7 +190,7 @@
     <!-- Stats -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-value hero" id="stat-total">—</div>
         <div class="stat-label">Total</div>
       </div>
       <div class="stat-card">
@@ -346,6 +418,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       try {
         const event = await API.get(`/api/events/${slug}`);
         document.getElementById('event-name').textContent = event.name;
+        document.getElementById('nav-event-name').textContent = event.name;
         document.getElementById('event-meta').textContent =
           [event.date_label, event.venue, event.city].filter(Boolean).join(' · ');
         document.getElementById('event-badge').innerHTML = event.published
@@ -408,7 +481,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
       tbody.innerHTML = guests.map(g => `
         <tr>
-          <td><strong>${esc(g.name)}</strong></td>
+          <td><span class="hero" style="font-size:14px;color:#ffffff">${esc(g.name)}</span></td>
           <td class="text-sm text-secondary">${esc(g.email || '—')}</td>
           <td class="text-sm">${g.tier ? `<span class="badge">${esc(g.tier)}</span>` : '<span class="text-muted text-xs">—</span>'}</td>
           <td class="text-sm text-secondary">${esc(g.notes || '')}</td>
