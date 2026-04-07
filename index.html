@@ -36,14 +36,26 @@
     #bouncer {
       position: fixed;
       background: #e8e8e4;
-      padding: 2.8rem 3.2rem;
       width: min(480px, 82vw);
+      height: min(300px, 40vh);
+      z-index: 0;
       /* top/left set by JS */
     }
 
+    #text-layer {
+      position: fixed;
+      inset: 0;
+      padding-top: 12vh;
+      padding-left: 8vw;
+      padding-right: 8vw;
+      z-index: 2;
+      pointer-events: none;
+    }
+
     #quote-block {
+      max-width: 62ch;
       font-style: italic;
-      font-size: clamp(1.2rem, 2.2vw, 2rem);
+      font-size: clamp(1.6rem, 3vw, 2.8rem);
       color: #111111;
       line-height: 1.55;
       letter-spacing: 0.01em;
@@ -53,10 +65,10 @@
     #quote-block.visible { opacity: 1; }
 
     #author-block {
-      margin-top: 1.6rem;
+      margin-top: 2.2rem;
       font-style: normal;
-      font-size: clamp(0.75rem, 1.1vw, 0.95rem);
-      color: #666666;
+      font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+      color: #555555;
       letter-spacing: 0.08em;
       line-height: 1.4;
       opacity: 0;
@@ -86,7 +98,9 @@
     #cursor.hidden { opacity: 0; }
 
     @media (max-width: 600px) {
-      #bouncer { width: 86vw; padding: 2rem 2.2rem; }
+      #bouncer { width: 86vw; height: 36vh; }
+      #text-layer { padding-top: 10vh; padding-left: 6vw; padding-right: 6vw; }
+      #quote-block { font-size: clamp(1.4rem, 5vw, 2rem); }
       #prompt-block { left: 50%; transform: translateX(-50%); white-space: nowrap; }
     }
   </style>
@@ -95,7 +109,9 @@
 
   <div id="site-title">Colectivo</div>
 
-  <div id="bouncer">
+  <div id="bouncer"></div>
+
+  <div id="text-layer">
     <div id="quote-block"></div>
     <div id="author-block"></div>
   </div>
