@@ -36,8 +36,8 @@
     #bouncer {
       position: fixed;
       background: #e8e8e4;
-      width: min(480px, 82vw);
-      height: min(300px, 40vh);
+      width: min(820px, 88vw);
+      height: min(540px, 68vh);
       z-index: 0;
       /* top/left set by JS */
     }
@@ -55,7 +55,7 @@
     #quote-block {
       max-width: 62ch;
       font-style: italic;
-      font-size: clamp(1.6rem, 3vw, 2.8rem);
+      font-size: clamp(0.85rem, 1.5vw, 1.4rem);
       color: #111111;
       line-height: 1.55;
       letter-spacing: 0.01em;
@@ -100,7 +100,7 @@
     @media (max-width: 600px) {
       #bouncer { width: 86vw; height: 36vh; }
       #text-layer { padding-top: 10vh; padding-left: 6vw; padding-right: 6vw; }
-      #quote-block { font-size: clamp(1.4rem, 5vw, 2rem); }
+      #quote-block { font-size: clamp(0.8rem, 2.5vw, 1rem); }
       #prompt-block { left: 50%; transform: translateX(-50%); white-space: nowrap; }
     }
   </style>
