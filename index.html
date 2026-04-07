@@ -36,8 +36,8 @@
     #bouncer {
       position: fixed;
       background: #e8e8e4;
-      width: min(1100px, 96vw);
-      height: min(780px, 90vh);
+      width: 89vw;
+      aspect-ratio: 1.618 / 1;
       z-index: 0;
       /* top/left set by JS */
     }
@@ -98,7 +98,7 @@
     #cursor.hidden { opacity: 0; }
 
     @media (max-width: 600px) {
-      #bouncer { width: 86vw; height: 36vh; }
+      #bouncer { width: 89vw; }
       #text-layer { padding-top: 10vh; padding-left: 6vw; padding-right: 6vw; }
       #quote-block { font-size: clamp(0.8rem, 2.5vw, 1rem); }
       #prompt-block { left: 50%; transform: translateX(-50%); white-space: nowrap; }
@@ -124,11 +124,7 @@
 
   // ── Quote pool ─────────────────────────────────────────────────────────────
   const quotes = [
-    { text: "The economy should be a servant to culture.", author: "Soichiro Fukutake" },
-    { text: "Scenius stands for the intelligence and the intuition of a whole cultural scene. It is the communal form of the concept of the genius.", author: "Brian Eno" },
-    { text: "The very idea of an exhibition is that we live in a world with each other, in which it is possible to make arrangements, associations, connections and wordless gestures, and, through this mise en scène, to speak.", author: "Hans Ulrich Obrist" },
-    { text: "The required collective subject does not exist yet — and yet the crisis demands that it be constructed.", author: "Mark Fisher" },
-    { text: "It is about making commitments, tying oneself down, and giving oneself away.", author: "David Brooks" }
+    { text: "A place only becomes a place when people agree to return to it. Before that, it's just a location. The agreement to return — that is what culture is made of.", author: "Yi-Fu Tuan" }
   ];
 
   // ── State machine ──────────────────────────────────────────────────────────
