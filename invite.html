@@ -91,35 +91,38 @@
       margin-bottom: 24px;
     }
     .invite-form input {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
       color: #fff;
-      padding: 14px 16px;
+      padding: 14px 0;
       font-family: inherit;
       font-size: 14px;
       outline: none;
       transition: border-color 0.2s;
+      border-radius: 0;
     }
     .invite-form input:focus {
-      border-color: var(--brand, #ff4444);
+      border-bottom-color: var(--brand, #ff4444);
     }
     .invite-form input::placeholder {
-      color: rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.3);
     }
     .invite-submit {
-      padding: 14px;
+      padding: 16px;
+      margin-top: 8px;
       font-family: inherit;
       font-size: 13px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 2px;
-      border: none;
+      border: 2px solid;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all 0.2s;
       color: #fff;
     }
-    .invite-submit:hover { opacity: 0.85; }
-    .invite-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+    .invite-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+    .invite-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
     .invite-added-list {
       margin-top: 24px;
@@ -279,7 +282,7 @@
             <input type="email" id="guest-email" placeholder="Email (para recibir QR)" autocomplete="off">
             <div style="display:flex;gap:12px;align-items:center;">
               <label style="color:rgba(255,255,255,0.4);font-size:12px;white-space:nowrap;letter-spacing:1px;">QRs</label>
-              <input type="number" id="guest-plus" min="1" max="${remaining}" value="1" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;padding:14px 16px;font-family:inherit;font-size:14px;outline:none;width:80px;text-align:center;" oninput="updatePlusLabel()">
+              <input type="number" id="guest-plus" min="1" max="${remaining}" value="1" style="background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.15);color:#fff;padding:14px 0;font-family:inherit;font-size:14px;outline:none;width:60px;text-align:center;border-radius:0;" oninput="updatePlusLabel()">
               <span style="color:rgba(255,255,255,0.25);font-size:11px;">/ ${remaining}</span>
             </div>
             <button type="submit" class="invite-submit" id="submit-btn" style="background:${bc}">
