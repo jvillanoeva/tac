@@ -279,8 +279,8 @@
             <input type="email" id="guest-email" placeholder="Email (para recibir QR)" autocomplete="off">
             <div style="display:flex;gap:12px;align-items:center;">
               <label style="color:rgba(255,255,255,0.4);font-size:12px;white-space:nowrap;letter-spacing:1px;">QRs</label>
-              <input type="range" id="guest-plus" min="1" max="${remaining}" value="1" style="flex:1;accent-color:${bc};" oninput="updatePlusLabel()">
-              <span id="plus-label" style="color:${bc};font-size:18px;font-weight:700;min-width:24px;text-align:center;">1</span>
+              <input type="number" id="guest-plus" min="1" max="${remaining}" value="1" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;padding:14px 16px;font-family:inherit;font-size:14px;outline:none;width:80px;text-align:center;" oninput="updatePlusLabel()">
+              <span style="color:rgba(255,255,255,0.25);font-size:11px;">/ ${remaining}</span>
             </div>
             <button type="submit" class="invite-submit" id="submit-btn" style="background:${bc}">
               Agregar invitado — 1 QR
@@ -312,8 +312,11 @@
     }
 
     function updatePlusLabel() {
-      const val = parseInt(document.getElementById('guest-plus').value) || 1;
-      document.getElementById('plus-label').textContent = val;
+      const input = document.getElementById('guest-plus');
+      let val = parseInt(input.value) || 1;
+      const max = parseInt(input.max) || 1;
+      if (val < 1) val = 1;
+      if (val > max) { val = max; input.value = max; }
       document.getElementById('submit-btn').textContent = `Agregar invitado — ${val} QR${val > 1 ? 's' : ''}`;
     }
 
