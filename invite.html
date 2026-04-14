@@ -232,7 +232,7 @@
 
     function render() {
       const bc = eventData.brand_color || '#ff4444';
-      const remaining = linkData.max_guests - linkData.used_count - addedGuests.length;
+      const remaining = linkData.max_guests - linkData.used_count;
       const exhausted = remaining <= 0;
 
       const page = document.getElementById('invite-page');
@@ -277,20 +277,28 @@
           <form class="invite-form" onsubmit="addGuest(event)">
             <input type="text" id="guest-name" placeholder="Nombre completo" required autocomplete="off">
             <input type="email" id="guest-email" placeholder="Email (para recibir QR)" autocomplete="off">
+            <div style="display:flex;gap:12px;align-items:center;">
+              <label style="color:rgba(255,255,255,0.4);font-size:12px;white-space:nowrap;letter-spacing:1px;">QRs</label>
+              <input type="range" id="guest-plus" min="1" max="${remaining}" value="1" style="flex:1;accent-color:${bc};" oninput="updatePlusLabel()">
+              <span id="plus-label" style="color:${bc};font-size:18px;font-weight:700;min-width:24px;text-align:center;">1</span>
+            </div>
             <button type="submit" class="invite-submit" id="submit-btn" style="background:${bc}">
-              Agregar invitado
+              Agregar invitado — 1 QR
             </button>
           </form>
         `}
 
         ${addedGuests.length > 0 ? `
           <div class="invite-added-list">
-            <h3>Agregados (${addedGuests.length})</h3>
+            <h3>Agregados</h3>
             ${addedGuests.map(g => `
               <div class="invite-added-item">
                 <span class="name">${g.name}</span>
-                <span class="status" style="color:${g.email ? 'var(--success, #33ff33)' : 'rgba(255,255,255,0.3)'}">
-                  ${g.email ? 'QR enviado' : 'Sin email'}
+                <span style="display:flex;align-items:center;gap:8px;">
+                  <span style="color:rgba(255,255,255,0.3);font-size:11px;">${g.qrs} QR${g.qrs > 1 ? 's' : ''}</span>
+                  <span class="status" style="color:${g.email ? 'var(--success, #33ff33)' : 'rgba(255,255,255,0.3)'}">
+                    ${g.email ? '✓' : '—'}
+                  </span>
                 </span>
               </div>
             `).join('')}
@@ -303,14 +311,23 @@
       `;
     }
 
+    function updatePlusLabel() {
+      const val = parseInt(document.getElementById('guest-plus').value) || 1;
+      document.getElementById('plus-label').textContent = val;
+      document.getElementById('submit-btn').textContent = `Agregar invitado — ${val} QR${val > 1 ? 's' : ''}`;
+    }
+
     async function addGuest(e) {
       e.preventDefault();
       const btn = document.getElementById('submit-btn');
       const nameInput = document.getElementById('guest-name');
       const emailInput = document.getElementById('guest-email');
+      const plusInput = document.getElementById('guest-plus');
 
       const name = nameInput.value.trim();
       const email = emailInput.value.trim();
+      const totalQrs = parseInt(plusInput?.value) || 1;
+      const plusN = totalQrs - 1;
 
       if (!name) return;
 
@@ -321,19 +338,19 @@
         const res = await fetch(`${CONFIG.API_URL}/api/invite/public/${token}/guest`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email: email || null }),
+          body: JSON.stringify({ name, email: email || null, plus: plusN }),
         });
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        addedGuests.push({ name, email });
-        linkData.used_count++;
+        addedGuests.push({ name, email, qrs: totalQrs });
+        linkData.used_count += totalQrs;
         render();
       } catch (err) {
         alert(err.message);
         btn.disabled = false;
-        btn.textContent = 'Agregar invitado';
+        btn.textContent = `Agregar invitado — ${totalQrs} QR${totalQrs > 1 ? 's' : ''}`;
       }
     }
 
