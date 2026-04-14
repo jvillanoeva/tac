@@ -253,7 +253,7 @@
 
         <div class="invite-stats">
           <div class="invite-stat">
-            <div class="value" style="color:${bc}">${remaining}</div>
+            <div class="value" style="color:#33ff33">${remaining}</div>
             <div class="label">Disponibles</div>
           </div>
           <div class="invite-stat">
@@ -275,7 +275,7 @@
           </div>
         ` : `
           <form class="invite-form" onsubmit="addGuest(event)">
-            <input type="text" id="guest-name" placeholder="Nombre completo" required autocomplete="off">
+            <input type="text" id="guest-name" placeholder="Nombre completo" required autocomplete="off" oninput="updatePlusLabel()">
             <input type="email" id="guest-email" placeholder="Email (para recibir QR)" autocomplete="off">
             <div style="display:flex;gap:12px;align-items:center;">
               <label style="color:rgba(255,255,255,0.4);font-size:12px;white-space:nowrap;letter-spacing:1px;">QRs</label>
@@ -283,7 +283,7 @@
               <span style="color:rgba(255,255,255,0.25);font-size:11px;">/ ${remaining}</span>
             </div>
             <button type="submit" class="invite-submit" id="submit-btn" style="background:${bc}">
-              Agregar invitado — 1 QR
+              Enviar 1 codigo QR${linkData.tier ? ' ' + linkData.tier : ''}
             </button>
           </form>
         `}
@@ -317,7 +317,10 @@
       const max = parseInt(input.max) || 1;
       if (val < 1) val = 1;
       if (val > max) { val = max; input.value = max; }
-      document.getElementById('submit-btn').textContent = `Agregar invitado — ${val} QR${val > 1 ? 's' : ''}`;
+      const name = (document.getElementById('guest-name').value || '').trim();
+      const tier = linkData.tier ? ` ${linkData.tier}` : '';
+      const toName = name ? ` a ${name}` : '';
+      document.getElementById('submit-btn').textContent = `Enviar ${val} codigo${val > 1 ? 's' : ''} QR${tier}${toName}`;
     }
 
     async function addGuest(e) {
@@ -353,7 +356,7 @@
       } catch (err) {
         alert(err.message);
         btn.disabled = false;
-        btn.textContent = `Agregar invitado — ${totalQrs} QR${totalQrs > 1 ? 's' : ''}`;
+        updatePlusLabel();
       }
     }
 
