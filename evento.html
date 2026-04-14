@@ -6,13 +6,40 @@
   <title>Evento — Colectivo</title>
   <link rel="stylesheet" href="/assets/css/style.css">
   <style>
+    body { background: #0a0a0a; }
+
+    .event-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+    }
+    .event-nav-logo {
+      height: 36px;
+      max-width: 140px;
+      object-fit: contain;
+    }
+    .event-nav-brand {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+    }
+
     .event-hero {
       position: relative;
       width: 100%;
       aspect-ratio: 16/7;
-      max-height: 400px;
+      max-height: 480px;
       overflow: hidden;
-      background: var(--bg-input);
+      background: #111;
     }
     .event-hero img {
       width: 100%;
@@ -22,79 +49,166 @@
     .event-hero-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(transparent 30%, rgba(0,0,0,0.85));
+      background: linear-gradient(transparent 20%, rgba(0,0,0,0.9));
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 32px;
+      padding: 40px;
     }
     .event-hero-overlay h1 {
-      font-size: 2rem;
-      margin-bottom: 4px;
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
     }
     .event-hero-overlay .subtitle {
-      color: rgba(255,255,255,0.7);
-      font-size: 1rem;
+      color: rgba(255,255,255,0.6);
+      font-size: 1.1rem;
+      font-weight: 400;
     }
+
+    .event-no-banner {
+      padding: 100px 40px 40px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .event-no-banner h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
     .event-content {
       max-width: 720px;
       margin: 0 auto;
-      padding: 32px 24px;
+      padding: 40px 24px 60px;
     }
-    .event-details {
+
+    .event-meta-bar {
       display: flex;
       gap: 24px;
       flex-wrap: wrap;
+      padding: 20px 0;
       margin-bottom: 32px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    .event-detail {
+    .event-meta-item {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 14px;
-      color: var(--text-secondary);
+      color: rgba(255,255,255,0.6);
     }
+    .event-meta-icon {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .access-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 24px;
+      border: 1px solid;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+
     .event-section {
-      margin-bottom: 32px;
+      margin-bottom: 36px;
     }
     .event-section h2 {
-      margin-bottom: 12px;
-      font-size: 1rem;
+      margin-bottom: 14px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-weight: 700;
     }
     .event-section p {
-      color: var(--text-secondary);
-      line-height: 1.7;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.8;
       white-space: pre-wrap;
+      font-size: 14px;
     }
+
+    .tiers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .tier-card {
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+      text-align: center;
+    }
+    .tier-card .tier-name {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
     .dos-donts {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
     }
-    .guestlist-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 20px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 14px;
-      color: var(--text-secondary);
+    .dos-donts .card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
     }
+
+    .contact-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .contact-item {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .event-footer {
+      text-align: center;
+      padding: 40px 24px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .event-footer a {
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+      text-decoration: none;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .layout-image {
+      width: 100%;
+      margin-bottom: 36px;
+      overflow: hidden;
+    }
+    .layout-image img {
+      width: 100%;
+      display: block;
+    }
+
     @media (max-width: 640px) {
       .dos-donts { grid-template-columns: 1fr; }
-      .event-hero-overlay h1 { font-size: 1.5rem; }
+      .event-hero-overlay h1, .event-no-banner h1 { font-size: 1.75rem; }
+      .event-hero-overlay { padding: 24px; }
+      .event-hero { aspect-ratio: 16/9; }
     }
   </style>
 </head>
 <body>
-  <nav class="nav">
-    <a href="/" class="nav-brand">Colectivo</a>
-  </nav>
-
   <div id="event-page">
     <div class="empty-state" style="padding:80px 24px;">
       <div class="spinner" style="margin:0 auto"></div>
@@ -116,10 +230,35 @@
         if (!res.ok) throw new Error('Evento no encontrado');
         const event = await res.json();
 
-        document.title = `${event.name} — Colectivo`;
+        const bc = event.brand_color || '#ff4444';
+        document.title = `${event.name}`;
+
+        // Set brand color as CSS variable
+        document.documentElement.style.setProperty('--brand', bc);
+
+        const tiers = event.tiers || [];
+        const tiersHtml = tiers.length > 0 ? `
+          <div class="event-section">
+            <h2 style="color:${bc}">Acceso</h2>
+            <div class="tiers-grid">
+              ${tiers.map(t => `
+                <div class="tier-card">
+                  <div class="tier-name" style="color:${bc}">${t.label || t}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : '';
 
         const page = document.getElementById('event-page');
         page.innerHTML = `
+          <div class="event-nav">
+            ${event.logo_url
+              ? `<img src="${event.logo_url}" alt="" class="event-nav-logo">`
+              : `<span class="event-nav-brand">${event.promoter_name || ''}</span>`}
+            <a href="/" class="event-nav-brand">TAC.COLECTIVO</a>
+          </div>
+
           ${event.banner_url ? `
             <div class="event-hero">
               <img src="${event.banner_url}" alt="${event.name}">
@@ -128,25 +267,35 @@
                 ${event.subtitle ? `<div class="subtitle">${event.subtitle}</div>` : ''}
               </div>
             </div>
-          ` : ''}
+          ` : `
+            <div class="event-no-banner">
+              <h1>${event.name}</h1>
+              ${event.subtitle ? `<p style="color:rgba(255,255,255,0.5);font-size:1.1rem;">${event.subtitle}</p>` : ''}
+            </div>
+          `}
 
           <div class="event-content">
-            ${!event.banner_url ? `<h1 style="margin-bottom:8px">${event.name}</h1>
-              ${event.subtitle ? `<p class="text-secondary" style="margin-bottom:24px">${event.subtitle}</p>` : ''}` : ''}
-
-            <div class="event-details">
-              ${event.date_label ? `<div class="event-detail">📅 ${event.date_label}</div>` : ''}
-              ${event.time_label ? `<div class="event-detail">🕐 ${event.time_label}</div>` : ''}
-              ${event.venue ? `<div class="event-detail">📍 ${event.venue}${event.city ? ', ' + event.city : ''}</div>` : ''}
+            <div class="event-meta-bar" style="border-color:${bc}22">
+              ${event.date_label ? `<div class="event-meta-item"><span class="event-meta-icon">&#9654;</span> ${event.date_label}</div>` : ''}
+              ${event.time_label ? `<div class="event-meta-item"><span class="event-meta-icon">&#9711;</span> ${event.time_label}</div>` : ''}
+              ${event.venue ? `<div class="event-meta-item"><span class="event-meta-icon">&#9632;</span> ${event.venue}${event.city ? ', ' + event.city : ''}</div>` : ''}
             </div>
 
-            <div class="guestlist-badge mb-16">
-              🎟️ Acceso por guestlist
+            <div class="access-badge" style="border-color:${bc}; color:${bc}">
+              GUESTLIST ONLY
             </div>
+
+            ${tiersHtml}
+
+            ${event.layout_url ? `
+              <div class="layout-image">
+                <img src="${event.layout_url}" alt="Layout">
+              </div>
+            ` : ''}
 
             ${event.description ? `
               <div class="event-section">
-                <h2>Acerca del evento</h2>
+                <h2 style="color:${bc}">Acerca del evento</h2>
                 <p>${event.description}</p>
               </div>
             ` : ''}
@@ -154,46 +303,50 @@
             ${event.dos || event.donts ? `
               <div class="event-section">
                 <div class="dos-donts">
-                  ${event.dos ? `<div class="card"><h3 style="color:var(--success);margin-bottom:8px">✓ Do's</h3><p class="text-sm">${event.dos}</p></div>` : ''}
-                  ${event.donts ? `<div class="card"><h3 style="color:var(--danger);margin-bottom:8px">✕ Don'ts</h3><p class="text-sm">${event.donts}</p></div>` : ''}
+                  ${event.dos ? `<div class="card"><h3 style="color:var(--success);margin-bottom:8px;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Do's</h3><p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.7;white-space:pre-wrap;">${event.dos}</p></div>` : ''}
+                  ${event.donts ? `<div class="card"><h3 style="color:var(--danger);margin-bottom:8px;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Don'ts</h3><p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.7;white-space:pre-wrap;">${event.donts}</p></div>` : ''}
                 </div>
               </div>
             ` : ''}
 
             ${event.restrictions ? `
               <div class="event-section">
-                <div class="card" style="border-color:var(--warning);background:rgba(234,179,8,0.05)">
-                  <h3 style="color:var(--warning);margin-bottom:8px">⚠ Restricciones</h3>
-                  <p class="text-sm">${event.restrictions}</p>
+                <div class="card" style="border-color:${bc}44;background:rgba(255,255,255,0.02);padding:20px;">
+                  <h3 style="color:${bc};margin-bottom:8px;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Restricciones</h3>
+                  <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.7;white-space:pre-wrap;">${event.restrictions}</p>
                 </div>
               </div>
             ` : ''}
 
             ${event.contact_email || event.contact_phone || event.contact_instagram ? `
               <div class="event-section">
-                <h2>Contacto</h2>
-                <div style="display:flex;gap:16px;flex-wrap:wrap;">
-                  ${event.contact_email ? `<span class="text-sm text-secondary">📧 ${event.contact_email}</span>` : ''}
-                  ${event.contact_phone ? `<span class="text-sm text-secondary">📱 ${event.contact_phone}</span>` : ''}
-                  ${event.contact_instagram ? `<span class="text-sm text-secondary">📸 ${event.contact_instagram}</span>` : ''}
+                <h2 style="color:${bc}">Contacto</h2>
+                <div class="contact-row">
+                  ${event.contact_email ? `<span class="contact-item">${event.contact_email}</span>` : ''}
+                  ${event.contact_phone ? `<span class="contact-item">${event.contact_phone}</span>` : ''}
+                  ${event.contact_instagram ? `<span class="contact-item">@${event.contact_instagram.replace('@','')}</span>` : ''}
                 </div>
               </div>
             ` : ''}
 
             ${event.map_url ? `
               <div class="event-section">
-                <h2>Ubicación</h2>
-                ${event.address ? `<p class="text-secondary text-sm mb-8">${event.address}</p>` : ''}
-                <a href="${event.map_url}" target="_blank" class="btn btn-sm">Ver en mapa →</a>
+                <h2 style="color:${bc}">Ubicacion</h2>
+                ${event.address ? `<p style="margin-bottom:12px;">${event.address}</p>` : ''}
+                <a href="${event.map_url}" target="_blank" class="btn btn-sm" style="border-color:${bc};color:${bc}">Ver en mapa</a>
               </div>
             ` : ''}
+          </div>
+
+          <div class="event-footer">
+            <a href="/">TAC.COLECTIVO.LIVE</a>
           </div>
         `;
       } catch (err) {
         document.getElementById('event-page').innerHTML = `
           <div class="empty-state" style="padding:80px 24px;">
             <h3>Evento no encontrado</h3>
-            <p class="text-secondary">Este evento no existe o no está publicado</p>
+            <p class="text-secondary">Este evento no existe o no esta publicado</p>
             <a href="/" class="btn mt-24">Ir al inicio</a>
           </div>`;
       }

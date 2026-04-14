@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitacion — Colectivo</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <style>
+    body { background: #0a0a0a; }
+
+    .invite-page {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .invite-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .invite-header img {
+      height: 40px;
+      max-width: 160px;
+      object-fit: contain;
+      margin-bottom: 16px;
+    }
+    .invite-event-name {
+      font-size: 1.5rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .invite-event-meta {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    .invite-banner {
+      width: 100%;
+      aspect-ratio: 16/7;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .invite-banner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .invite-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 32px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.02);
+    }
+    .invite-stat {
+      text-align: center;
+    }
+    .invite-stat .value {
+      font-size: 2rem;
+      font-weight: 800;
+    }
+    .invite-stat .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+
+    .invite-label {
+      text-align: center;
+      margin-bottom: 24px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .invite-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .invite-form input {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      padding: 14px 16px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .invite-form input:focus {
+      border-color: var(--brand, #ff4444);
+    }
+    .invite-form input::placeholder {
+      color: rgba(255,255,255,0.25);
+    }
+    .invite-submit {
+      padding: 14px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      color: #fff;
+    }
+    .invite-submit:hover { opacity: 0.85; }
+    .invite-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .invite-added-list {
+      margin-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 16px;
+    }
+    .invite-added-list h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 12px;
+    }
+    .invite-added-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 13px;
+    }
+    .invite-added-item .name { color: #fff; font-weight: 600; }
+    .invite-added-item .status { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .invite-exhausted {
+      text-align: center;
+      padding: 40px 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .invite-exhausted h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .invite-exhausted p {
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+    }
+
+    .invite-error {
+      text-align: center;
+      padding: 80px 24px;
+    }
+    .invite-error h3 { margin-bottom: 8px; }
+    .invite-error p { color: rgba(255,255,255,0.4); font-size: 14px; }
+
+    .invite-tier-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border: 1px solid;
+    }
+
+    .invite-footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 32px 0 16px;
+    }
+    .invite-footer a {
+      font-size: 10px;
+      color: rgba(255,255,255,0.15);
+      text-decoration: none;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="invite-page" id="invite-page">
+    <div class="empty-state" style="padding:80px 24px;">
+      <div class="spinner" style="margin:0 auto"></div>
+    </div>
+  </div>
+
+  <script src="/assets/js/config.js"></script>
+  <script>
+    const token = window.location.pathname.split('/invite/')[1] || new URLSearchParams(window.location.search).get('t');
+    if (!token) window.location.href = '/';
+
+    let linkData = null;
+    let eventData = null;
+    const addedGuests = [];
+
+    async function init() {
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/invite/public/${token}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Link not found');
+        }
+        const data = await res.json();
+        linkData = data.link;
+        eventData = data.event;
+
+        document.title = `${eventData.name} — Invitacion`;
+        const bc = eventData.brand_color || '#ff4444';
+        document.documentElement.style.setProperty('--brand', bc);
+
+        render();
+      } catch (err) {
+        document.getElementById('invite-page').innerHTML = `
+          <div class="invite-error">
+            <h3>${err.message === 'This invite link has been deactivated' ? 'Link desactivado' : 'Link no encontrado'}</h3>
+            <p>${err.message}</p>
+          </div>`;
+      }
+    }
+
+    function render() {
+      const bc = eventData.brand_color || '#ff4444';
+      const remaining = linkData.max_guests - linkData.used_count - addedGuests.length;
+      const exhausted = remaining <= 0;
+
+      const page = document.getElementById('invite-page');
+      page.innerHTML = `
+        <div class="invite-header">
+          ${eventData.logo_url ? `<img src="${eventData.logo_url}" alt="">` : ''}
+          <div class="invite-event-name">${eventData.name}</div>
+          <div class="invite-event-meta">${[eventData.date_label, eventData.venue, eventData.city].filter(Boolean).join(' · ')}</div>
+        </div>
+
+        ${eventData.banner_url ? `
+          <div class="invite-banner">
+            <img src="${eventData.banner_url}" alt="${eventData.name}">
+          </div>
+        ` : ''}
+
+        <div class="invite-label">Invitaciones de ${linkData.label}</div>
+
+        <div class="invite-stats">
+          <div class="invite-stat">
+            <div class="value" style="color:${bc}">${remaining}</div>
+            <div class="label">Disponibles</div>
+          </div>
+          <div class="invite-stat">
+            <div class="value">${linkData.max_guests}</div>
+            <div class="label">Total</div>
+          </div>
+        </div>
+
+        ${linkData.tier ? `
+          <div style="text-align:center; margin-bottom:24px;">
+            <span class="invite-tier-badge" style="border-color:${bc}; color:${bc}">${linkData.tier}</span>
+          </div>
+        ` : ''}
+
+        ${exhausted ? `
+          <div class="invite-exhausted">
+            <h3>Invitaciones agotadas</h3>
+            <p>Se han usado todas las invitaciones disponibles</p>
+          </div>
+        ` : `
+          <form class="invite-form" onsubmit="addGuest(event)">
+            <input type="text" id="guest-name" placeholder="Nombre completo" required autocomplete="off">
+            <input type="email" id="guest-email" placeholder="Email (para recibir QR)" autocomplete="off">
+            <button type="submit" class="invite-submit" id="submit-btn" style="background:${bc}">
+              Agregar invitado
+            </button>
+          </form>
+        `}
+
+        ${addedGuests.length > 0 ? `
+          <div class="invite-added-list">
+            <h3>Agregados (${addedGuests.length})</h3>
+            ${addedGuests.map(g => `
+              <div class="invite-added-item">
+                <span class="name">${g.name}</span>
+                <span class="status" style="color:${g.email ? 'var(--success, #33ff33)' : 'rgba(255,255,255,0.3)'}">
+                  ${g.email ? 'QR enviado' : 'Sin email'}
+                </span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        <div class="invite-footer">
+          <a href="/">TAC.COLECTIVO.LIVE</a>
+        </div>
+      `;
+    }
+
+    async function addGuest(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      const nameInput = document.getElementById('guest-name');
+      const emailInput = document.getElementById('guest-email');
+
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+
+      if (!name) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Agregando...';
+
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/invite/public/${token}/guest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email: email || null }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        addedGuests.push({ name, email });
+        linkData.used_count++;
+        render();
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.textContent = 'Agregar invitado';
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

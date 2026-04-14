@@ -259,6 +259,23 @@
 
       <div class="staff-list" id="staff-list"></div>
     </div>
+
+    <!-- Invite Links section (owner only) -->
+    <div class="staff-section hidden" id="invite-links-section">
+      <h2 style="font-size:16px; margin-bottom:4px;">INVITE LINKS</h2>
+      <p class="text-sm text-secondary">Crea links para que sub-promotores agreguen invitados con un limite.</p>
+
+      <div class="staff-add-form" id="invite-add-form">
+        <input type="text" class="form-input" id="invite-label" placeholder="Nombre (ej: Carlos PR)" style="flex:1">
+        <select class="form-input" id="invite-tier" style="width:auto">
+          <option value="">Sin categoria</option>
+        </select>
+        <input type="number" class="form-input" id="invite-max" placeholder="Limite" value="20" min="1" max="500" style="width:80px">
+        <button class="btn btn-primary btn-sm" onclick="createInviteLink()">+ Crear</button>
+      </div>
+
+      <div id="invite-links-list"></div>
+    </div>
   </div>
 
   <!-- Add Guest Modal -->
@@ -412,6 +429,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       await loadEvent();
       await loadGuests();
       await loadStaff();
+      await loadInviteLinks();
     }
 
     async function loadEvent() {
@@ -733,6 +751,93 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       try {
         await API.del(`/api/events/${slug}/staff/${staffId}`);
         await loadStaff();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // === Invite Links ===
+    async function loadInviteLinks() {
+      if (currentUserRole !== 'owner') return;
+      const section = document.getElementById('invite-links-section');
+      section.classList.remove('hidden');
+
+      // Populate tier dropdown
+      const tierSel = document.getElementById('invite-tier');
+      tierSel.innerHTML = '<option value="">Sin categoria</option>';
+      eventTiers.forEach(t => {
+        tierSel.innerHTML += `<option value="${t.label}">${t.label}</option>`;
+      });
+
+      try {
+        const links = await API.get(`/api/events/${slug}/invite-links`);
+        const list = document.getElementById('invite-links-list');
+
+        if (links.length === 0) {
+          list.innerHTML = '<p class="text-sm text-secondary" style="margin-top:12px;">Sin invite links aun</p>';
+          return;
+        }
+
+        list.innerHTML = links.map(l => `
+          <div class="staff-row" style="flex-wrap:wrap;gap:8px;">
+            <div class="staff-info" style="flex:1;min-width:0;">
+              <span style="font-weight:600;">${esc(l.label)}</span>
+              ${l.tier ? `<span class="badge">${esc(l.tier)}</span>` : ''}
+              <span class="text-sm text-secondary">${l.used_count}/${l.max_guests}</span>
+              ${l.active ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-muted">Inactivo</span>'}
+            </div>
+            <div class="guest-actions">
+              <button class="btn btn-sm" onclick="copyInviteLink('${l.token}')" title="Copiar link">📋</button>
+              <button class="btn btn-sm" onclick="toggleInviteLink('${l.id}', ${!l.active})">${l.active ? '⏸' : '▶'}</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteInviteLink('${l.id}')">✕</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Invite links load error:', err);
+      }
+    }
+
+    async function createInviteLink() {
+      const label = document.getElementById('invite-label').value.trim();
+      if (!label) { alert('Agrega un nombre para el link'); return; }
+
+      const tier = document.getElementById('invite-tier').value || null;
+      const max_guests = parseInt(document.getElementById('invite-max').value) || 20;
+
+      try {
+        const link = await API.post(`/api/events/${slug}/invite-links`, { label, tier, max_guests });
+        document.getElementById('invite-label').value = '';
+        await copyInviteLink(link.token);
+        await loadInviteLinks();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function copyInviteLink(token) {
+      const url = `${window.location.origin}/invite/${token}`;
+      navigator.clipboard.writeText(url).then(() => {
+        alert('Link copiado: ' + url);
+      }).catch(() => {
+        prompt('Copia este link:', url);
+      });
+    }
+
+    async function toggleInviteLink(linkId, active) {
+      try {
+        await API.patch(`/api/events/${slug}/invite-links/${linkId}`, { active });
+        await loadInviteLinks();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteInviteLink(linkId) {
+      if (!confirm('¿Eliminar este invite link?')) return;
+      try {
+        await API.del(`/api/events/${slug}/invite-links/${linkId}`);
+        await loadInviteLinks();
       } catch (err) {
         alert(err.message);
       }

@@ -45,9 +45,13 @@ const API = (() => {
     return request(path, { method: 'PUT', body: JSON.stringify(body) });
   }
 
+  function patch(path, body) {
+    return request(path, { method: 'PATCH', body: JSON.stringify(body) });
+  }
+
   function del(path) {
     return request(path, { method: 'DELETE' });
   }
 
-  return { init, get, post, put, del };
+  return { init, get, post, put, patch, del };
 })();
