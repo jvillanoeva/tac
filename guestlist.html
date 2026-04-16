@@ -274,6 +274,7 @@
         <button class="btn btn-sm" onclick="openExcelModal()">📄 Subir Excel</button>
         <button class="btn btn-sm" onclick="sendAllQr()" id="send-all-btn">📧 Enviar QR a todos</button>
         <button class="btn btn-sm" onclick="downloadReport()">📊 Descargar reporte</button>
+        <button class="btn btn-sm" onclick="downloadAllQrs()" id="dl-all-qrs-btn">📦 Descargar QRs (zip)</button>
       </div>
       <div class="search-bar" style="margin:0; max-width:280px; flex:1;">
         <input type="text" placeholder="Buscar..." id="search-input" oninput="handleSearch()">
@@ -366,7 +367,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Accesos extras (+N)</label>
-            <input type="number" class="form-input" id="add-plus" min="0" max="10" value="0" placeholder="0">
+            <input type="number" class="form-input" id="add-plus" min="0" max="50" value="0" placeholder="0">
             <span class="text-xs text-secondary">Cada +1 genera un QR adicional</span>
           </div>
         </div>
@@ -598,6 +599,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
               ${!g.checked_in ? `<button class="btn btn-sm" onclick="manualCheckin('${g.id}', this)" title="Check in manual">✓</button>` : ''}
               ${g.email && !g.email_sent ? `<button class="btn btn-sm" onclick="sendQr('${g.id}', this)">QR</button>` : ''}
               ${g.email && g.email_sent ? `<button class="btn btn-sm" onclick="sendQr('${g.id}', this)">↻</button>` : ''}
+              <button class="btn btn-sm" onclick="downloadGuestQrs('${g.id}')" title="Descargar QRs en zip">📦</button>
               <button class="btn btn-danger btn-sm" onclick="removeGuest('${g.id}')">✕</button>
             </div>
           </td>
@@ -745,6 +747,54 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       } finally {
         btn.disabled = false;
         btn.textContent = '📧 Enviar QR a todos';
+      }
+    }
+
+    async function downloadGuestQrs(guestId) {
+      try {
+        const token = await Auth.getToken();
+        const resp = await fetch(`${CONFIG.API_URL}/api/events/${slug}/guests/${guestId}/qrs.zip`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!resp.ok) throw new Error('Error al generar ZIP');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${slug}-qrs.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function downloadAllQrs() {
+      const btn = document.getElementById('dl-all-qrs-btn');
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Generando...';
+      try {
+        const token = await Auth.getToken();
+        const resp = await fetch(`${CONFIG.API_URL}/api/events/${slug}/guests/qrs.zip`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || 'Error al generar ZIP');
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${slug}-todos-qrs.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
       }
     }
 
