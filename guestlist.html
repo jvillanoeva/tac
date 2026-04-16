@@ -275,6 +275,7 @@
         <button class="btn btn-sm" onclick="sendAllQr()" id="send-all-btn">📧 Enviar QR a todos</button>
         <button class="btn btn-sm" onclick="downloadReport()">📊 Descargar reporte</button>
         <button class="btn btn-sm" onclick="downloadAllQrs()" id="dl-all-qrs-btn">📦 Descargar QRs (zip)</button>
+        <button class="btn btn-sm" onclick="toggleViewMode()" id="view-mode-btn">📂 Agrupar extras</button>
       </div>
       <div class="search-bar" style="margin:0; max-width:280px; flex:1;">
         <input type="text" placeholder="Buscar..." id="search-input" oninput="handleSearch()">
@@ -483,6 +484,8 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
     let allGuests = [];
     let eventTiers = [];
+    let viewMode = 'grouped'; // 'grouped' or 'expanded'
+    const expandedGroups = new Set();
 
     async function init() {
       await Auth.requireSession();
@@ -578,17 +581,30 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       }
     }
 
-    function renderTable(guests) {
-      const tbody = document.getElementById('guests-table');
+    function isExtra(g) {
+      return /\(\+\d+\)$/.test(g.name);
+    }
 
-      if (guests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-secondary" style="text-align:center;padding:32px;">No hay invitados aún</td></tr>';
-        return;
-      }
+    function renderRow(g, opts = {}) {
+      const { isExtraRow = false, primaryId = null, extrasCount = 0, groupId = null } = opts;
+      const indent = isExtraRow ? 'padding-left:32px;' : '';
+      const nameStyle = isExtraRow
+        ? `font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9ca3af;${indent}`
+        : `font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e5e7eb`;
 
-      tbody.innerHTML = guests.map(g => `
-        <tr>
-          <td><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e5e7eb">${esc(g.name)}</span></td>
+      const expandToggle = (extrasCount > 0 && groupId)
+        ? `<button class="btn btn-sm" style="padding:2px 6px;margin-right:6px;background:transparent;border:1px solid #374151;color:#9ca3af;" onclick="toggleGroup('${groupId}')" title="Mostrar/ocultar extras">${expandedGroups.has(groupId) ? '▾' : '▸'}</button>`
+        : '';
+
+      const extrasBadge = extrasCount > 0
+        ? `<span class="badge" style="margin-left:8px;background:rgba(255,68,68,0.15);color:#ff8888;border:1px solid rgba(255,68,68,0.3);">+${extrasCount}</span>`
+        : '';
+
+      return `
+        <tr ${isExtraRow ? 'style="background:rgba(255,255,255,0.02);"' : ''}>
+          <td>
+            ${expandToggle}<span style="${nameStyle}">${esc(g.name)}</span>${extrasBadge}
+          </td>
           <td class="text-sm text-secondary">${esc(g.email || '—')}</td>
           <td class="text-sm">${g.tier ? `<span class="badge">${esc(g.tier)}</span>` : '<span class="text-muted text-xs">—</span>'}</td>
           <td class="text-sm text-secondary">${esc(g.notes || '')}</td>
@@ -604,7 +620,100 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
             </div>
           </td>
         </tr>
-      `).join('');
+      `;
+    }
+
+    function renderTable(guests) {
+      const tbody = document.getElementById('guests-table');
+
+      if (guests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-secondary" style="text-align:center;padding:32px;">No hay invitados aún</td></tr>';
+        return;
+      }
+
+      if (viewMode === 'expanded') {
+        tbody.innerHTML = guests.map(g => renderRow(g)).join('');
+        return;
+      }
+
+      // Grouped view: hide extras under primaries
+      // Build a map: group_id -> { primary, extras: [] }
+      const groupMap = new Map();
+      const ungrouped = [];
+
+      for (const g of guests) {
+        if (!g.group_id) {
+          ungrouped.push(g);
+          continue;
+        }
+        if (!groupMap.has(g.group_id)) groupMap.set(g.group_id, { primary: null, extras: [] });
+        const entry = groupMap.get(g.group_id);
+        if (isExtra(g)) {
+          entry.extras.push(g);
+        } else {
+          entry.primary = g;
+        }
+      }
+
+      // Render in original guests order, but skip extras unless their group is expanded
+      const seenGroups = new Set();
+      const rows = [];
+
+      for (const g of guests) {
+        if (!g.group_id) {
+          rows.push(renderRow(g));
+          continue;
+        }
+        if (seenGroups.has(g.group_id)) continue;
+
+        const entry = groupMap.get(g.group_id);
+        if (!entry || !entry.primary) {
+          // No primary found (shouldn't happen, but just render as-is)
+          rows.push(renderRow(g));
+          seenGroups.add(g.group_id);
+          continue;
+        }
+        seenGroups.add(g.group_id);
+
+        rows.push(renderRow(entry.primary, {
+          extrasCount: entry.extras.length,
+          groupId: g.group_id,
+        }));
+
+        if (expandedGroups.has(g.group_id)) {
+          for (const ext of entry.extras) {
+            rows.push(renderRow(ext, { isExtraRow: true }));
+          }
+        }
+      }
+
+      tbody.innerHTML = rows.join('');
+    }
+
+    function toggleGroup(groupId) {
+      if (expandedGroups.has(groupId)) {
+        expandedGroups.delete(groupId);
+      } else {
+        expandedGroups.add(groupId);
+      }
+      renderTable(currentFiltered());
+    }
+
+    function currentFiltered() {
+      const q = (document.getElementById('search-input').value || '').toLowerCase();
+      if (!q) return allGuests;
+      return allGuests.filter(g =>
+        g.name.toLowerCase().includes(q) ||
+        (g.email && g.email.toLowerCase().includes(q)) ||
+        (g.notes && g.notes.toLowerCase().includes(q))
+      );
+    }
+
+    function toggleViewMode() {
+      viewMode = viewMode === 'grouped' ? 'expanded' : 'grouped';
+      const btn = document.getElementById('view-mode-btn');
+      btn.textContent = viewMode === 'grouped' ? '📂 Agrupar extras' : '📋 Ver todos';
+      renderTable(currentFiltered());
     }
 
     function esc(str) {
@@ -614,13 +723,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
     }
 
     function handleSearch() {
-      const q = document.getElementById('search-input').value.toLowerCase();
-      const filtered = allGuests.filter(g =>
-        g.name.toLowerCase().includes(q) ||
-        (g.email && g.email.toLowerCase().includes(q)) ||
-        (g.notes && g.notes.toLowerCase().includes(q))
-      );
-      renderTable(filtered);
+      renderTable(currentFiltered());
     }
 
     function openAddModal() {
