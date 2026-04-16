@@ -275,7 +275,7 @@
         <button class="btn btn-sm" onclick="sendAllQr()" id="send-all-btn">📧 Enviar QR a todos</button>
         <button class="btn btn-sm" onclick="downloadReport()">📊 Descargar reporte</button>
         <button class="btn btn-sm" onclick="downloadAllQrs()" id="dl-all-qrs-btn">📦 Descargar QRs (zip)</button>
-        <button class="btn btn-sm" onclick="toggleViewMode()" id="view-mode-btn">📂 Agrupar extras</button>
+        <button class="btn btn-sm" onclick="toggleViewMode()" id="view-mode-btn">📋 Ver todos</button>
       </div>
       <div class="search-bar" style="margin:0; max-width:280px; flex:1;">
         <input type="text" placeholder="Buscar..." id="search-input" oninput="handleSearch()">
@@ -712,7 +712,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
     function toggleViewMode() {
       viewMode = viewMode === 'grouped' ? 'expanded' : 'grouped';
       const btn = document.getElementById('view-mode-btn');
-      btn.textContent = viewMode === 'grouped' ? '📂 Agrupar extras' : '📋 Ver todos';
+      btn.textContent = viewMode === 'grouped' ? '📋 Ver todos' : '📂 Agrupar extras';
       renderTable(currentFiltered());
     }
 
