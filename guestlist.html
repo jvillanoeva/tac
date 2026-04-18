@@ -160,6 +160,18 @@
       font-size: 13px;
       padding: 6px 10px;
     }
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    th.sortable:hover { color: #ffffff; }
+    .sort-ind {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 10px;
+      opacity: 0.7;
+    }
 
     /* ── Event hero banner ────────────────────────────────────────── */
     .event-hero-banner {
@@ -288,12 +300,12 @@
         <table>
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th>Categoría</th>
-              <th>Notas</th>
-              <th>QR</th>
-              <th>Estado</th>
+              <th class="sortable" data-sort="name" onclick="sortBy('name')">Nombre <span class="sort-ind" id="ind-name"></span></th>
+              <th class="sortable" data-sort="email" onclick="sortBy('email')">Email <span class="sort-ind" id="ind-email"></span></th>
+              <th class="sortable" data-sort="tier" onclick="sortBy('tier')">Categoría <span class="sort-ind" id="ind-tier"></span></th>
+              <th class="sortable" data-sort="notes" onclick="sortBy('notes')">Notas <span class="sort-ind" id="ind-notes"></span></th>
+              <th class="sortable" data-sort="email_sent" onclick="sortBy('email_sent')">QR <span class="sort-ind" id="ind-email_sent"></span></th>
+              <th class="sortable" data-sort="checked_in" onclick="sortBy('checked_in')">Estado <span class="sort-ind" id="ind-checked_in"></span></th>
               <th></th>
             </tr>
           </thead>
@@ -486,6 +498,8 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
     let eventTiers = [];
     let viewMode = 'grouped'; // 'grouped' or 'expanded'
     const expandedGroups = new Set();
+    let sortKey = null;
+    let sortDir = 'asc'; // 'asc' or 'desc'
 
     async function init() {
       await Auth.requireSession();
@@ -701,12 +715,48 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
     function currentFiltered() {
       const q = (document.getElementById('search-input').value || '').toLowerCase();
-      if (!q) return allGuests;
-      return allGuests.filter(g =>
+      let list = !q ? allGuests : allGuests.filter(g =>
         g.name.toLowerCase().includes(q) ||
         (g.email && g.email.toLowerCase().includes(q)) ||
         (g.notes && g.notes.toLowerCase().includes(q))
       );
+      return sortGuests(list);
+    }
+
+    function sortGuests(list) {
+      if (!sortKey) return list;
+      const dir = sortDir === 'asc' ? 1 : -1;
+      const sorted = [...list].sort((a, b) => {
+        const av = a[sortKey];
+        const bv = b[sortKey];
+        // Booleans: false < true
+        if (typeof av === 'boolean' || typeof bv === 'boolean') {
+          return ((av ? 1 : 0) - (bv ? 1 : 0)) * dir;
+        }
+        // Strings (with null handling — nulls sort last)
+        const as = (av || '').toString().toLowerCase();
+        const bs = (bv || '').toString().toLowerCase();
+        if (!as && bs) return 1;
+        if (as && !bs) return -1;
+        if (as < bs) return -1 * dir;
+        if (as > bs) return 1 * dir;
+        return 0;
+      });
+      return sorted;
+    }
+
+    function sortBy(key) {
+      if (sortKey === key) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortKey = key;
+        sortDir = 'asc';
+      }
+      // Update indicators
+      document.querySelectorAll('.sort-ind').forEach(el => el.textContent = '');
+      const ind = document.getElementById('ind-' + key);
+      if (ind) ind.textContent = sortDir === 'asc' ? '▲' : '▼';
+      renderTable(currentFiltered());
     }
 
     function toggleViewMode() {
