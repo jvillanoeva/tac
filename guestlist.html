@@ -415,9 +415,9 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       </div>
       <p class="text-sm text-secondary mb-16">Sube un archivo <code>.xlsx</code> o <code>.csv</code>. Mapea las columnas a los campos correctos.</p>
 
-      <div id="excel-upload-zone" class="upload-zone" style="border:1px dashed var(--border);padding:24px;text-align:center;cursor:pointer;margin-bottom:16px;" onclick="document.getElementById('excel-file').click()">
+      <div id="excel-upload-zone" class="upload-zone" style="border:1px dashed var(--border);padding:24px;text-align:center;cursor:pointer;margin-bottom:16px;transition:background 0.15s, border-color 0.15s;" onclick="document.getElementById('excel-file').click()">
         <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="parseExcelFile(this)">
-        <div class="upload-text" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para seleccionar archivo</div>
+        <div class="upload-text" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click o arrastra archivo aqui</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">.xlsx, .xls, .csv</div>
       </div>
 
@@ -1092,9 +1092,62 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       document.getElementById('excel-modal').classList.add('active');
     }
 
+    // Drag-and-drop wiring for Excel upload zone
+    function setupExcelDragDrop() {
+      const zone = document.getElementById('excel-upload-zone');
+      if (!zone || zone.dataset.dragWired) return;
+      zone.dataset.dragWired = '1';
+
+      // Prevent default for drag events on the zone
+      ['dragenter', 'dragover'].forEach(evt => {
+        zone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          zone.style.background = 'rgba(255,68,68,0.08)';
+          zone.style.borderColor = 'var(--accent, #ff4444)';
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(evt => {
+        zone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          zone.style.background = '';
+          zone.style.borderColor = '';
+        });
+      });
+
+      zone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (files && files.length > 0) {
+          parseExcelBlob(files[0]);
+        }
+      });
+
+      // Prevent the browser from opening files dropped anywhere else on the page
+      ['dragover', 'drop'].forEach(evt => {
+        document.addEventListener(evt, (e) => {
+          if (!e.target.closest('#excel-upload-zone')) {
+            e.preventDefault();
+          }
+        });
+      });
+    }
+    setupExcelDragDrop();
+
     function parseExcelFile(input) {
       const file = input.files[0];
       if (!file) return;
+      parseExcelBlob(file);
+    }
+
+    function parseExcelBlob(file) {
+      if (!file) return;
+      const validTypes = /\.(xlsx|xls|csv)$/i;
+      if (!validTypes.test(file.name)) {
+        alert('Formato no valido. Usa .xlsx, .xls o .csv');
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = function(e) {
