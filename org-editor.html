@@ -163,6 +163,10 @@
               <label class="form-label">Website</label>
               <input type="url" class="form-input" id="website" placeholder="https://...">
             </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label">URL para "Registro para guestlist"</label>
+              <input type="url" class="form-input" id="guestlist_url" placeholder="https://instagram.com/... o Google Form">
+            </div>
           </div>
         </div>
 
@@ -320,6 +324,7 @@
         document.getElementById('contact_instagram').value = org.contact_instagram || '';
         document.getElementById('contact_phone').value = org.contact_phone || '';
         document.getElementById('website').value = org.website || '';
+        document.getElementById('guestlist_url').value = org.guestlist_url || '';
 
         setType(org.type);
         setDefaultTheme(org.default_theme || 'dark');
@@ -372,6 +377,7 @@
         contact_instagram: document.getElementById('contact_instagram').value.trim() || null,
         contact_phone: document.getElementById('contact_phone').value.trim() || null,
         website: document.getElementById('website').value.trim() || null,
+        guestlist_url: document.getElementById('guestlist_url').value.trim() || null,
         logo_url: state.logo_url || null,
         banner_url: state.banner_url || null,
         brand_color: state.brand_color,

@@ -24,8 +24,8 @@
       --logo-filter: invert(1);  /* logo is black, invert for dark bg */
     }
     [data-theme="light"] {
-      --bg: #fafafa;
-      --bg-elev: #ffffff;
+      --bg: #ffffff;
+      --bg-elev: #fafafa;
       --text: #0a0a0a;
       --text-dim: rgba(0,0,0,0.55);
       --text-faint: rgba(0,0,0,0.25);
@@ -124,6 +124,28 @@
       margin-top: 16px;
       color: var(--text-faint);
     }
+    .tagline .live-since {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Guestlist CTA ────────────────────────────────────────────── */
+    .guestlist-cta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 0;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 500;
+      transition: padding 150ms ease;
+    }
+    .guestlist-cta:hover { padding-left: 8px; }
+    .guestlist-cta .arrow {
+      color: var(--text-faint);
+      transition: color 150ms;
+    }
+    .guestlist-cta:hover .arrow { color: var(--text); }
 
     /* ── Banner (optional) ────────────────────────────────────────── */
     .banner {
@@ -299,6 +321,56 @@
       return div.innerHTML;
     }
 
+    function renderTagline(tagline) {
+      if (!tagline) return '';
+      const re = /\{\{since:(\d{4}-\d{2}-\d{2})\}\}/g;
+      let out = '';
+      let lastIndex = 0;
+      let match;
+      while ((match = re.exec(tagline)) !== null) {
+        out += esc(tagline.slice(lastIndex, match.index));
+        out += `<span class="live-since" data-since="${esc(match[1])}"></span>`;
+        lastIndex = match.index + match[0].length;
+      }
+      out += esc(tagline.slice(lastIndex));
+      return `<div class="tagline">${out}</div>`;
+    }
+
+    function formatSince(sinceStr) {
+      const since = new Date(sinceStr + 'T00:00:00');
+      const now = new Date();
+      if (isNaN(since) || now < since) return '';
+      let years  = now.getFullYear() - since.getFullYear();
+      let months = now.getMonth()    - since.getMonth();
+      let days   = now.getDate()     - since.getDate();
+      let hours  = now.getHours()    - since.getHours();
+      let mins   = now.getMinutes()  - since.getMinutes();
+      let secs   = now.getSeconds()  - since.getSeconds();
+      if (secs  < 0) { secs  += 60; mins--;  }
+      if (mins  < 0) { mins  += 60; hours--; }
+      if (hours < 0) { hours += 24; days--;  }
+      if (days  < 0) {
+        const prevMonthDays = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+        days += prevMonthDays; months--;
+      }
+      if (months < 0) { months += 12; years--; }
+      const pad = n => String(n).padStart(2, '0');
+      const yL = years === 1 ? 'año' : 'años';
+      const mL = months === 1 ? 'mes' : 'meses';
+      const dL = days === 1 ? 'día' : 'días';
+      return `${years} ${yL}, ${months} ${mL}, ${days} ${dL}, ${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+    }
+
+    let sinceTickerId = null;
+    function startSinceTicker() {
+      if (sinceTickerId) clearInterval(sinceTickerId);
+      const tick = () => document.querySelectorAll('.live-since').forEach(el => {
+        el.textContent = formatSince(el.dataset.since);
+      });
+      tick();
+      sinceTickerId = setInterval(tick, 1000);
+    }
+
     async function load() {
       try {
         const res = await fetch(`${CONFIG.API_URL}/api/orgs/public/${encodeURIComponent(slug)}`);
@@ -380,7 +452,7 @@
               ? `<img src="${esc(org.logo_url)}" alt="${esc(org.name)}">`
               : `<h1 style="font-family:Inter;font-weight:800;font-size:48px;letter-spacing:-1px;">${esc(org.name)}</h1>`
             }
-            ${org.tagline ? `<div class="tagline">${esc(org.tagline)}</div>` : ''}
+            ${renderTagline(org.tagline)}
             ${org.city ? `<div class="city mono">${esc(org.city)}</div>` : ''}
           </div>
 
@@ -391,11 +463,23 @@
             </section>
           ` : ''}
 
-          <hr class="divider" />
-          <section>
-            <div class="section-label">Próximas fechas</div>
-            <div class="events">${upcomingHtml}</div>
-          </section>
+          ${org.guestlist_url ? `
+            <hr class="divider" />
+            <section>
+              <a href="${esc(org.guestlist_url)}" class="guestlist-cta" target="_blank" rel="noopener">
+                <span>Registro para guestlist</span>
+                <span class="arrow">→</span>
+              </a>
+            </section>
+          ` : ''}
+
+          ${upcoming.length > 0 ? `
+            <hr class="divider" />
+            <section>
+              <div class="section-label">Próximas fechas</div>
+              <div class="events">${upcomingHtml}</div>
+            </section>
+          ` : ''}
 
           ${pastHtml}
           ${contactHtml}
@@ -405,6 +489,8 @@
           </div>
         </div>
       `;
+
+      startSinceTicker();
     }
 
     if (slug) load();
