@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organización — TAC</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <style>
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 800px) {
+      .editor-layout { grid-template-columns: 1fr; }
+    }
+    .editor-section { margin-bottom: 32px; }
+    .editor-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .upload-zone {
+      border: 1px dashed var(--border);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .upload-zone:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .upload-preview {
+      width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .type-pills {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .type-pill {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      text-align: center;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      background: transparent;
+      font-family: inherit;
+    }
+    .type-pill.active {
+      border-color: var(--accent);
+      color: var(--text-bright);
+      background: var(--accent-dim);
+    }
+    .members-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .member-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; border: 1px solid var(--border); font-size: 12px;
+    }
+    .url-preview {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .color-row { display: flex; gap: 8px; align-items: center; }
+    .color-row input[type="color"] {
+      width: 48px; height: 36px; padding: 0; border: 1px solid var(--border); cursor: pointer; background: transparent;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div style="display:flex;align-items:center">
+      <a href="/dashboard.html" class="nav-brand">TAC.COLECTIVO</a>
+      <span style="font-family:'IBM Plex Mono',monospace;color:#4b5563;margin:0 10px;font-size:13px">·</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em" id="nav-org-name">Nueva organización</span>
+    </div>
+    <div class="nav-links">
+      <a href="/dashboard.html">← dashboard</a>
+      <a href="#" id="view-public-link" style="display:none">ver pública</a>
+      <a href="#" onclick="Auth.signOut()">salir</a>
+    </div>
+  </nav>
+
+  <div class="container page">
+    <div id="error-bar" class="hidden" style="background:#3a1010;border:1px solid #ff4444;color:#ff8888;padding:12px;margin-bottom:16px;font-size:13px;"></div>
+
+    <h1 class="hero" id="page-title" style="font-size:28px;color:#fff;margin-bottom:24px;">Nueva organización</h1>
+
+    <div class="editor-layout">
+      <!-- LEFT: form -->
+      <div>
+        <div class="editor-section">
+          <div class="editor-section-title">Tipo</div>
+          <div class="type-pills">
+            <button type="button" class="type-pill" data-type="venue" onclick="setType('venue')">Venue</button>
+            <button type="button" class="type-pill" data-type="promoter" onclick="setType('promoter')">Promoter</button>
+          </div>
+          <div class="text-xs text-muted">Venue = lugar/serie recurrente. Promoter = marca productora.</div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-title">Información</div>
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input type="text" class="form-input" id="name" placeholder="Sunday Sunday" oninput="updateSlugPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">URL (slug)</label>
+            <input type="text" class="form-input" id="slug" placeholder="sundaysunday">
+            <div class="url-preview">tac.colectivo.live/<span id="slug-preview">slug</span></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tagline</label>
+            <input type="text" class="form-input" id="tagline" placeholder="Una frase que describe la marca">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descripción</label>
+            <textarea class="form-input" id="description" rows="4" placeholder="Manifesto, propósito, estilo musical, lo que sea."></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Ciudad</label>
+              <input type="text" class="form-input" id="city" placeholder="CDMX">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dirección (venue)</label>
+              <input type="text" class="form-input" id="address" placeholder="Opcional">
+            </div>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-title">Contacto</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-input" id="contact_email" placeholder="hola@org.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Instagram</label>
+              <input type="text" class="form-input" id="contact_instagram" placeholder="@usuario">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Teléfono</label>
+              <input type="text" class="form-input" id="contact_phone" placeholder="55 1234 5678">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Website</label>
+              <input type="url" class="form-input" id="website" placeholder="https://...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Members section (shown after save) -->
+        <div class="editor-section hidden" id="members-section">
+          <div class="editor-section-title">Equipo</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <input type="email" class="form-input" id="member-email" placeholder="email@ejemplo.com" style="flex:1">
+            <select class="form-input" id="member-role" style="width:auto">
+              <option value="manager">Manager</option>
+              <option value="owner">Owner</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="addMember()">+ Agregar</button>
+          </div>
+          <div class="members-list" id="members-list"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: branding sidebar -->
+      <div>
+        <div class="card" style="position:sticky; top:16px; padding:16px;">
+          <div class="editor-section-title">Logo</div>
+          <img id="logo-preview" class="upload-preview hidden" alt="">
+          <div class="upload-zone" onclick="document.getElementById('logo-file').click()">
+            <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="uploadImage(this, 'logo')">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para subir</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">PNG, JPG, SVG · max 5MB</div>
+          </div>
+
+          <div class="editor-section-title" style="margin-top:24px;">Banner (opcional)</div>
+          <img id="banner-preview" class="upload-preview hidden" alt="">
+          <div class="upload-zone" onclick="document.getElementById('banner-file').click()">
+            <input type="file" id="banner-file" accept="image/*" style="display:none" onchange="uploadImage(this, 'banner')">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para subir</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">1600x700px recomendado</div>
+          </div>
+
+          <div class="editor-section-title" style="margin-top:24px;">Color de marca</div>
+          <div class="color-row">
+            <input type="color" id="brand_color" value="#ffffff" onchange="syncColor()">
+            <input type="text" class="form-input" id="brand_color_text" value="#ffffff" oninput="syncColorText()" style="flex:1;">
+          </div>
+
+          <div class="editor-section-title" style="margin-top:24px;">Tema por defecto</div>
+          <div class="type-pills">
+            <button type="button" class="type-pill" data-default-theme="light" onclick="setDefaultTheme('light')">☀ Claro</button>
+            <button type="button" class="type-pill" data-default-theme="dark" onclick="setDefaultTheme('dark')">☾ Oscuro</button>
+          </div>
+
+          <button class="btn btn-primary" id="save-btn" onclick="save()" style="width:100%;margin-top:24px;">Guardar</button>
+          <button class="btn" id="delete-btn" onclick="remove()" style="width:100%;margin-top:8px;display:none;">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script>
+    Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    API.init(CONFIG.API_URL);
+
+    const editingSlug = new URLSearchParams(location.search).get('slug');
+    let state = {
+      type: 'venue',
+      logo_url: '',
+      banner_url: '',
+      brand_color: '#ffffff',
+      default_theme: 'dark',
+    };
+
+    function setType(t) {
+      state.type = t;
+      document.querySelectorAll('[data-type]').forEach(el => {
+        el.classList.toggle('active', el.dataset.type === t);
+      });
+    }
+    function setDefaultTheme(t) {
+      state.default_theme = t;
+      document.querySelectorAll('[data-default-theme]').forEach(el => {
+        el.classList.toggle('active', el.dataset.defaultTheme === t);
+      });
+    }
+    function syncColor() {
+      const c = document.getElementById('brand_color').value;
+      document.getElementById('brand_color_text').value = c;
+      state.brand_color = c;
+    }
+    function syncColorText() {
+      const c = document.getElementById('brand_color_text').value;
+      if (/^#[0-9a-fA-F]{6}$/.test(c)) {
+        document.getElementById('brand_color').value = c;
+        state.brand_color = c;
+      }
+    }
+    function updateSlugPreview() {
+      const name = document.getElementById('name').value;
+      const slugInput = document.getElementById('slug');
+      const auto = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 60);
+      if (!editingSlug && !slugInput.value) slugInput.placeholder = auto || 'slug';
+      document.getElementById('slug-preview').textContent = slugInput.value || auto || 'slug';
+    }
+    document.getElementById('slug').addEventListener('input', updateSlugPreview);
+
+    function showError(msg) {
+      const bar = document.getElementById('error-bar');
+      bar.textContent = msg;
+      bar.classList.remove('hidden');
+      setTimeout(() => bar.classList.add('hidden'), 5000);
+    }
+
+    async function uploadImage(input, kind) {
+      const file = input.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const token = await Auth.getToken();
+        const res = await fetch(`${CONFIG.API_URL}/api/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
+        const { url } = await res.json();
+        state[`${kind}_url`] = url;
+        const preview = document.getElementById(`${kind}-preview`);
+        preview.src = url;
+        preview.classList.remove('hidden');
+      } catch (err) {
+        showError('Error al subir imagen: ' + err.message);
+      }
+    }
+
+    async function load() {
+      await Auth.requireSession();
+      setType('venue');
+      setDefaultTheme('dark');
+
+      if (!editingSlug) return;
+
+      try {
+        const org = await API.get(`/api/orgs/${editingSlug}`);
+        document.getElementById('page-title').textContent = org.name;
+        document.getElementById('nav-org-name').textContent = org.name;
+        document.getElementById('name').value = org.name;
+        document.getElementById('slug').value = org.slug;
+        document.getElementById('tagline').value = org.tagline || '';
+        document.getElementById('description').value = org.description || '';
+        document.getElementById('city').value = org.city || '';
+        document.getElementById('address').value = org.address || '';
+        document.getElementById('contact_email').value = org.contact_email || '';
+        document.getElementById('contact_instagram').value = org.contact_instagram || '';
+        document.getElementById('contact_phone').value = org.contact_phone || '';
+        document.getElementById('website').value = org.website || '';
+
+        setType(org.type);
+        setDefaultTheme(org.default_theme || 'dark');
+
+        if (org.logo_url) {
+          state.logo_url = org.logo_url;
+          const p = document.getElementById('logo-preview');
+          p.src = org.logo_url;
+          p.classList.remove('hidden');
+        }
+        if (org.banner_url) {
+          state.banner_url = org.banner_url;
+          const p = document.getElementById('banner-preview');
+          p.src = org.banner_url;
+          p.classList.remove('hidden');
+        }
+        if (org.brand_color) {
+          state.brand_color = org.brand_color;
+          document.getElementById('brand_color').value = org.brand_color;
+          document.getElementById('brand_color_text').value = org.brand_color;
+        }
+
+        document.getElementById('view-public-link').href = `/${org.slug}`;
+        document.getElementById('view-public-link').style.display = '';
+        document.getElementById('members-section').classList.remove('hidden');
+        if (org.my_role === 'owner') {
+          document.getElementById('delete-btn').style.display = '';
+        }
+        renderMembers(org.members || []);
+        updateSlugPreview();
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    async function save() {
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        slug: document.getElementById('slug').value.trim() || undefined,
+        type: state.type,
+        tagline: document.getElementById('tagline').value.trim() || null,
+        description: document.getElementById('description').value.trim() || null,
+        city: document.getElementById('city').value.trim() || null,
+        address: document.getElementById('address').value.trim() || null,
+        contact_email: document.getElementById('contact_email').value.trim() || null,
+        contact_instagram: document.getElementById('contact_instagram').value.trim() || null,
+        contact_phone: document.getElementById('contact_phone').value.trim() || null,
+        website: document.getElementById('website').value.trim() || null,
+        logo_url: state.logo_url || null,
+        banner_url: state.banner_url || null,
+        brand_color: state.brand_color,
+        default_theme: state.default_theme,
+      };
+
+      try {
+        if (editingSlug) {
+          await API.put(`/api/orgs/${editingSlug}`, payload);
+          showSuccess('Guardado');
+        } else {
+          const created = await API.post('/api/orgs', payload);
+          window.location.href = `/org-editor.html?slug=${created.slug}`;
+          return;
+        }
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+      }
+    }
+
+    function showSuccess(msg) {
+      const bar = document.getElementById('error-bar');
+      bar.style.background = '#0a3a10';
+      bar.style.borderColor = '#33ff33';
+      bar.style.color = '#88ff88';
+      bar.textContent = msg;
+      bar.classList.remove('hidden');
+      setTimeout(() => {
+        bar.classList.add('hidden');
+        bar.style.background = '#3a1010';
+        bar.style.borderColor = '#ff4444';
+        bar.style.color = '#ff8888';
+      }, 2000);
+    }
+
+    async function addMember() {
+      const email = document.getElementById('member-email').value.trim();
+      const role = document.getElementById('member-role').value;
+      if (!email) return;
+      try {
+        await API.post(`/api/orgs/${editingSlug}/members`, { email, role });
+        document.getElementById('member-email').value = '';
+        const org = await API.get(`/api/orgs/${editingSlug}`);
+        renderMembers(org.members || []);
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    async function removeMember(userId) {
+      if (!confirm('¿Eliminar este miembro?')) return;
+      try {
+        await API.del(`/api/orgs/${editingSlug}/members/${userId}`);
+        const org = await API.get(`/api/orgs/${editingSlug}`);
+        renderMembers(org.members || []);
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function renderMembers(members) {
+      const list = document.getElementById('members-list');
+      if (!members.length) { list.innerHTML = '<p class="text-sm text-secondary">Solo tú</p>'; return; }
+      list.innerHTML = members.map(m => `
+        <div class="member-row">
+          <div>
+            <span class="badge">${m.role}</span>
+            <span style="margin-left:8px;font-family:monospace;">${m.user_id.slice(0, 8)}…</span>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="removeMember('${m.user_id}')">✕</button>
+        </div>
+      `).join('');
+    }
+
+    async function remove() {
+      if (!confirm('¿Eliminar esta organización? Los eventos no se borrarán pero quedarán sin marca.')) return;
+      try {
+        await API.del(`/api/orgs/${editingSlug}`);
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

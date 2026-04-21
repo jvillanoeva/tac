@@ -133,6 +133,17 @@
     <div class="editor-layout">
       <div class="editor-main">
 
+        <!-- Organization picker -->
+        <div class="editor-section" id="org-picker-section">
+          <div class="editor-section-title">Organización</div>
+          <div class="form-group">
+            <select class="form-input" id="organization_id" onchange="onOrgChange()">
+              <option value="">— Sin organización (evento independiente) —</option>
+            </select>
+            <div class="text-xs text-muted mt-8" id="org-hint">El evento heredará la marca (logo, color, banner) de la organización si no las defines aquí.</div>
+          </div>
+        </div>
+
         <!-- Basic Info -->
         <div class="editor-section">
           <div class="editor-section-title">Información</div>
@@ -332,7 +343,61 @@ Entry Details:
     const FIELDS = ['name', 'slug', 'subtitle', 'date_label', 'time_label', 'venue', 'city',
       'description', 'dos', 'donts', 'restrictions', 'contact_email', 'contact_phone',
       'contact_instagram', 'address', 'map_url', 'banner_url', 'layout_url', 'logo_url', 'brand_color',
-      'email_instructions_es', 'email_instructions_en'];
+      'email_instructions_es', 'email_instructions_en', 'organization_id'];
+
+    // Cache of orgs the user belongs to
+    let myOrgs = [];
+    async function loadMyOrgs() {
+      try {
+        myOrgs = await API.get('/api/orgs');
+        const select = document.getElementById('organization_id');
+        // Keep the first "no org" option, append the rest
+        myOrgs.forEach(org => {
+          const opt = document.createElement('option');
+          opt.value = org.id;
+          opt.textContent = `${org.name} (${org.type === 'venue' ? 'venue' : 'promoter'})`;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.warn('Could not load orgs:', e.message);
+      }
+    }
+
+    function onOrgChange() {
+      const orgId = document.getElementById('organization_id').value;
+      if (!orgId) return;
+      const org = myOrgs.find(o => o.id === orgId);
+      if (!org) return;
+
+      // Auto-fill empty branding fields with org defaults
+      const fillIfEmpty = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && !el.value && val) el.value = val;
+      };
+      fillIfEmpty('city', org.city);
+      fillIfEmpty('venue', org.type === 'venue' ? org.name : '');
+      fillIfEmpty('contact_email', org.contact_email);
+      fillIfEmpty('contact_instagram', org.contact_instagram);
+      fillIfEmpty('contact_phone', org.contact_phone);
+      // Brand color: only set if at default red
+      const bc = document.getElementById('brand_color');
+      const bcHex = document.getElementById('brand_color_hex');
+      if (bc.value === '#e74c3c' && org.brand_color) {
+        bc.value = org.brand_color;
+        bcHex.value = org.brand_color;
+      }
+      // Logo / banner: only set if empty
+      if (org.logo_url && !document.getElementById('logo_url').value) {
+        document.getElementById('logo_url').value = org.logo_url;
+        const lp = document.getElementById('logo-preview');
+        if (lp) { lp.src = org.logo_url; lp.classList.remove('hidden'); }
+      }
+      if (org.banner_url && !document.getElementById('banner_url').value) {
+        document.getElementById('banner_url').value = org.banner_url;
+        const bp = document.getElementById('banner-preview');
+        if (bp) { bp.src = org.banner_url; bp.classList.remove('hidden'); }
+      }
+    }
 
     // Sync color picker ↔ hex input
     document.getElementById('brand_color').addEventListener('input', (e) => {
@@ -463,6 +528,19 @@ Entry Details:
 
     async function loadEvent() {
       await Auth.requireSession();
+
+      // Always load orgs (for both create and edit)
+      await loadMyOrgs();
+
+      // Pre-select org if creating from an org context (?org=slug)
+      const orgSlugFromUrl = params.get('org');
+      if (orgSlugFromUrl && !editSlug) {
+        const o = myOrgs.find(o => o.slug === orgSlugFromUrl);
+        if (o) {
+          document.getElementById('organization_id').value = o.id;
+          onOrgChange();
+        }
+      }
 
       if (!editSlug) return;
 

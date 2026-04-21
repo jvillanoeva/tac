@@ -1,7 +1,8 @@
 {
   "rewrites": [
     { "source": "/e/:slug", "destination": "/evento.html?e=:slug" },
-    { "source": "/invite/:token", "destination": "/invite.html?t=:token" }
+    { "source": "/invite/:token", "destination": "/invite.html?t=:token" },
+    { "source": "/:slug", "destination": "/org.html?slug=:slug" }
   ],
   "headers": [
     {

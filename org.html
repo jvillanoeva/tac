@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organización — TAC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/theme.js"></script>
+  <style>
+    /* ── Base reset ───────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ── Theme variables ──────────────────────────────────────────── */
+    :root {
+      --bg: #0a0a0a;
+      --bg-elev: #141414;
+      --text: #ffffff;
+      --text-dim: rgba(255,255,255,0.55);
+      --text-faint: rgba(255,255,255,0.25);
+      --line: rgba(255,255,255,0.12);
+      --logo-filter: invert(1);  /* logo is black, invert for dark bg */
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --bg-elev: #ffffff;
+      --text: #0a0a0a;
+      --text-dim: rgba(0,0,0,0.55);
+      --text-faint: rgba(0,0,0,0.25);
+      --line: rgba(0,0,0,0.12);
+      --logo-filter: none;  /* logo is black, no filter for light bg */
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 300;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      transition: background 200ms ease, color 200ms ease;
+    }
+
+    /* ── Mono utility ─────────────────────────────────────────────── */
+    .mono {
+      font-family: 'IBM Plex Mono', 'SF Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    /* ── Top bar ──────────────────────────────────────────────────── */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .topbar .left, .topbar .right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      pointer-events: auto;
+    }
+    .topbar a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .topbar a:hover { color: var(--text); }
+
+    .theme-btn {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--text-dim);
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: color 120ms, border-color 120ms;
+    }
+    .theme-btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+    /* ── Container ────────────────────────────────────────────────── */
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 80px 24px 48px;
+    }
+
+    /* ── Hero / Logo ──────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 80px 0 40px;
+    }
+    .hero img {
+      max-width: 320px;
+      width: 70%;
+      height: auto;
+      filter: var(--logo-filter);
+    }
+    .hero .tagline {
+      margin-top: 24px;
+      color: var(--text-dim);
+      font-size: 14px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero .city {
+      margin-top: 16px;
+      color: var(--text-faint);
+    }
+
+    /* ── Banner (optional) ────────────────────────────────────────── */
+    .banner {
+      width: 100%;
+      aspect-ratio: 16/7;
+      max-height: 360px;
+      overflow: hidden;
+      background: var(--bg-elev);
+      margin-bottom: 32px;
+    }
+    .banner img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+
+    /* ── Sections ─────────────────────────────────────────────────── */
+    section { padding: 32px 0; }
+    .divider {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 0;
+    }
+    .section-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 24px;
+    }
+    .description {
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--text);
+      max-width: 560px;
+      margin: 0 auto;
+      text-align: center;
+      white-space: pre-wrap;
+    }
+
+    /* ── Event list ───────────────────────────────────────────────── */
+    .events {
+      display: flex;
+      flex-direction: column;
+    }
+    .event-row {
+      display: grid;
+      grid-template-columns: 80px 1fr auto;
+      gap: 24px;
+      align-items: center;
+      padding: 20px 0;
+      border-top: 1px solid var(--line);
+      color: var(--text);
+      text-decoration: none;
+      transition: padding 150ms ease;
+    }
+    .event-row:first-child { border-top: 1px solid var(--line); }
+    .event-row:hover {
+      padding-left: 8px;
+    }
+    .event-row .date {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .event-row .title {
+      font-size: 18px;
+      font-weight: 500;
+    }
+    .event-row .meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--text-faint);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .event-row .arrow {
+      color: var(--text-faint);
+      transition: color 150ms;
+    }
+    .event-row:hover .arrow { color: var(--text); }
+    .event-row.past .title { color: var(--text-dim); }
+
+    /* ── Empty state ──────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      color: var(--text-faint);
+      padding: 32px 0;
+      font-size: 14px;
+    }
+
+    /* ── Contact ──────────────────────────────────────────────────── */
+    .contact {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .contact a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 2px;
+      transition: border-color 150ms;
+    }
+    .contact a:hover { border-color: var(--text); }
+
+    /* ── Footer ───────────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 48px 0 32px;
+      color: var(--text-faint);
+    }
+
+    /* ── Loading / Error ──────────────────────────────────────────── */
+    .loading, .error {
+      min-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 8px;
+    }
+    .error h2 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 22px;
+    }
+    .error p { color: var(--text-dim); }
+
+    @media (max-width: 600px) {
+      .hero img { width: 80%; }
+      .event-row { grid-template-columns: 60px 1fr 16px; gap: 16px; }
+      .event-row .title { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="left"><a href="/">tac.colectivo</a></div>
+    <div class="right">
+      <button class="theme-btn" id="theme-btn" aria-label="Cambiar tema">☀</button>
+    </div>
+  </div>
+
+  <div id="root">
+    <div class="loading mono">Cargando…</div>
+  </div>
+
+  <script>
+    Theme.mountToggle('#theme-btn');
+
+    const slug = window.location.pathname.replace(/^\//, '').replace(/\/$/, '') || new URLSearchParams(location.search).get('slug');
+    if (!slug) { document.getElementById('root').innerHTML = '<div class="error mono"><h2>Sin organización</h2></div>'; }
+
+    function fmtDate(dateStr, fallback) {
+      if (!dateStr && fallback) return fallback;
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d)) return fallback || '';
+      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return `${months[d.getMonth()]} ${d.getDate()}`;
+    }
+
+    function esc(s) {
+      const div = document.createElement('div');
+      div.textContent = s == null ? '' : String(s);
+      return div.innerHTML;
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/api/orgs/public/${encodeURIComponent(slug)}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'No encontrado');
+        }
+        const { org, upcoming, past } = await res.json();
+        document.title = org.name;
+
+        // Apply org's preferred theme on first paint if user has no preference
+        try {
+          if (!localStorage.getItem('tac.theme') && org.default_theme) {
+            Theme.set(org.default_theme);
+          }
+        } catch (e) {}
+
+        render(org, upcoming, past);
+      } catch (err) {
+        document.getElementById('root').innerHTML = `
+          <div class="error">
+            <h2>Organización no encontrada</h2>
+            <p class="mono">${esc(err.message)}</p>
+          </div>`;
+      }
+    }
+
+    function render(org, upcoming, past) {
+      const root = document.getElementById('root');
+
+      const upcomingHtml = upcoming.length === 0
+        ? '<div class="empty mono">Sin fechas confirmadas</div>'
+        : upcoming.map(ev => `
+            <a href="/e/${esc(ev.slug)}" class="event-row">
+              <span class="date">${esc(fmtDate(ev.date, ev.date_label))}</span>
+              <div>
+                <div class="title">${esc(ev.name)}</div>
+                ${ev.venue ? `<div class="meta">${esc(ev.venue)}${ev.city ? ' · ' + esc(ev.city) : ''}</div>` : ''}
+              </div>
+              <span class="arrow">→</span>
+            </a>
+          `).join('');
+
+      const pastHtml = past.length === 0 ? '' : `
+        <hr class="divider" />
+        <section>
+          <div class="section-label">Archivo</div>
+          <div class="events">
+            ${past.map(ev => `
+              <a href="/e/${esc(ev.slug)}" class="event-row past">
+                <span class="date">${esc(fmtDate(ev.date, ev.date_label))}</span>
+                <div>
+                  <div class="title">${esc(ev.name)}</div>
+                </div>
+                <span class="arrow">→</span>
+              </a>
+            `).join('')}
+          </div>
+        </section>
+      `;
+
+      const contactHtml = (org.contact_email || org.contact_instagram || org.website) ? `
+        <hr class="divider" />
+        <section>
+          <div class="contact">
+            ${org.contact_instagram ? `<a href="https://instagram.com/${esc(org.contact_instagram.replace('@',''))}" target="_blank">@${esc(org.contact_instagram.replace('@',''))}</a>` : ''}
+            ${org.contact_email ? `<a href="mailto:${esc(org.contact_email)}">${esc(org.contact_email)}</a>` : ''}
+            ${org.website ? `<a href="${esc(org.website)}" target="_blank">${esc(org.website.replace(/^https?:\/\//,''))}</a>` : ''}
+          </div>
+        </section>
+      ` : '';
+
+      root.innerHTML = `
+        ${org.banner_url ? `<div class="banner"><img src="${esc(org.banner_url)}" alt="${esc(org.name)}"></div>` : ''}
+
+        <div class="container">
+          <div class="hero">
+            ${org.logo_url
+              ? `<img src="${esc(org.logo_url)}" alt="${esc(org.name)}">`
+              : `<h1 style="font-family:Inter;font-weight:800;font-size:48px;letter-spacing:-1px;">${esc(org.name)}</h1>`
+            }
+            ${org.tagline ? `<div class="tagline">${esc(org.tagline)}</div>` : ''}
+            ${org.city ? `<div class="city mono">${esc(org.city)}</div>` : ''}
+          </div>
+
+          ${org.description ? `
+            <hr class="divider" />
+            <section>
+              <div class="description">${esc(org.description)}</div>
+            </section>
+          ` : ''}
+
+          <hr class="divider" />
+          <section>
+            <div class="section-label">Próximas fechas</div>
+            <div class="events">${upcomingHtml}</div>
+          </section>
+
+          ${pastHtml}
+          ${contactHtml}
+
+          <div class="footer mono">
+            <a href="/" style="color:inherit;text-decoration:none;">tac.colectivo.live</a>
+          </div>
+        </div>
+      `;
+    }
+
+    if (slug) load();
+  </script>
+</body>
+</html>
