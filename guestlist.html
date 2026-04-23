@@ -215,6 +215,26 @@
       color: rgba(255,255,255,0.5);
       margin-top: 4px;
     }
+    /* Industry chips */
+    .industry-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .industry-chip {
+      background: transparent;
+      border: 1px solid var(--border, #2a2a2a);
+      color: var(--text, #e5e7eb);
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 999px;
+      transition: background 120ms, border-color 120ms, color 120ms;
+    }
+    .industry-chip:hover { border-color: #4b5563; }
+    .industry-chip.selected {
+      background: var(--text, #f3f4f6);
+      color: var(--bg, #0a0a0a);
+      border-color: var(--text, #f3f4f6);
+    }
+    .industry-chip.add-chip { color: var(--text-secondary, #9ca3af); border-style: dashed; }
   </style>
 </head>
 <body>
@@ -384,15 +404,16 @@
             <span class="text-xs text-secondary">Cada +1 genera un QR adicional</span>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">De parte de <span class="text-xs text-secondary">(opcional)</span></label>
-            <input type="text" class="form-input" id="add-requested-by" placeholder="Quién lo pidió">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Industria <span class="text-xs text-secondary">(opcional)</span></label>
-            <input type="text" class="form-input" id="add-industry" placeholder="Media, DJ friend, investor...">
-          </div>
+        <div class="form-group">
+          <label class="form-label">Invitado por <span class="text-xs text-secondary">(opcional)</span></label>
+          <input type="text" class="form-input" id="add-requested-by" list="requested-by-options" autocomplete="off" placeholder="Nombre">
+          <datalist id="requested-by-options"></datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría de invitado <span class="text-xs text-secondary">(opcional)</span></label>
+          <div class="industry-chips" id="industry-chips"></div>
+          <input type="hidden" id="add-industry">
+          <input type="text" class="form-input industry-custom hidden" id="add-industry-custom" placeholder="Escribe categoría…" style="margin-top:8px;">
         </div>
         <div class="form-group">
           <label class="form-label">Notas</label>
@@ -506,6 +527,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
     let allGuests = [];
     let eventTiers = [];
+    let orgName = null;
     let viewMode = 'grouped'; // 'grouped' or 'expanded'
     const expandedGroups = new Set();
     let sortKey = null;
@@ -559,6 +581,10 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           });
         }
 
+        // Capture org name (for industry chip) and build chip row
+        orgName = event.organizations && event.organizations.name ? event.organizations.name : null;
+        buildIndustryChips();
+
         // Populate tier dropdown. If event has no tiers defined, fall back to "GA".
         eventTiers = event.tiers || [];
         const tierSelect = document.getElementById('add-tier');
@@ -593,10 +619,56 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       }
     }
 
+    // Industry chips (selectable categories for "quien es este invitado")
+    function buildIndustryChips() {
+      const presets = ['Prensa', 'Talento', 'Promotor'];
+      if (orgName) presets.push(orgName);
+      const row = document.getElementById('industry-chips');
+      if (!row) return;
+      row.innerHTML = presets.map(p =>
+        `<button type="button" class="industry-chip" data-value="${esc(p)}" onclick="selectIndustryChip(this)">${esc(p)}</button>`
+      ).join('') + `<button type="button" class="industry-chip add-chip" onclick="toggleIndustryCustom()">+ Agregar</button>`;
+    }
+
+    function selectIndustryChip(btn) {
+      document.querySelectorAll('#industry-chips .industry-chip').forEach(c => c.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('add-industry').value = btn.dataset.value;
+      const customEl = document.getElementById('add-industry-custom');
+      customEl.classList.add('hidden');
+      customEl.value = '';
+    }
+
+    function toggleIndustryCustom() {
+      document.querySelectorAll('#industry-chips .industry-chip').forEach(c => c.classList.remove('selected'));
+      const customEl = document.getElementById('add-industry-custom');
+      customEl.classList.remove('hidden');
+      customEl.focus();
+      // sync custom text into hidden input
+      customEl.oninput = () => { document.getElementById('add-industry').value = customEl.value.trim(); };
+    }
+
+    function resetIndustryField() {
+      document.querySelectorAll('#industry-chips .industry-chip').forEach(c => c.classList.remove('selected'));
+      document.getElementById('add-industry').value = '';
+      const customEl = document.getElementById('add-industry-custom');
+      customEl.classList.add('hidden');
+      customEl.value = '';
+    }
+
+    // Refresh "Invitado por" autocomplete options from prior guests on this event
+    function refreshRequestedByOptions() {
+      const dl = document.getElementById('requested-by-options');
+      if (!dl) return;
+      const unique = Array.from(new Set((allGuests || []).map(g => g.requested_by).filter(Boolean)));
+      dl.innerHTML = unique.map(v => `<option value="${esc(v)}"></option>`).join('');
+    }
+
     async function loadGuests() {
       try {
         const { guests, stats } = await API.get(`/api/events/${slug}/guests`);
         allGuests = guests;
+        refreshRequestedByOptions();
 
         document.getElementById('stat-total').textContent = stats.total;
         document.getElementById('stat-checked').textContent = stats.checked_in;
@@ -832,8 +904,8 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         document.getElementById('add-notes').value = '';
         document.getElementById('add-tier').value = '';
         document.getElementById('add-requested-by').value = '';
-        document.getElementById('add-industry').value = '';
         document.getElementById('add-plus').value = '0';
+        resetIndustryField();
 
         closeModal('add-modal');
         await loadGuests();
