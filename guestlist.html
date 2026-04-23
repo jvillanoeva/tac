@@ -384,6 +384,16 @@
             <span class="text-xs text-secondary">Cada +1 genera un QR adicional</span>
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">De parte de <span class="text-xs text-secondary">(opcional)</span></label>
+            <input type="text" class="form-input" id="add-requested-by" placeholder="Quién lo pidió">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Industria <span class="text-xs text-secondary">(opcional)</span></label>
+            <input type="text" class="form-input" id="add-industry" placeholder="Media, DJ friend, investor...">
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">Notas</label>
           <input type="text" class="form-input" id="add-notes" placeholder="Notas internas">
@@ -549,13 +559,18 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           });
         }
 
-        // Populate tier dropdown
+        // Populate tier dropdown. If event has no tiers defined, fall back to "GA".
         eventTiers = event.tiers || [];
         const tierSelect = document.getElementById('add-tier');
-        tierSelect.innerHTML = '<option value="">— Sin categoría —</option>';
-        eventTiers.forEach(t => {
-          tierSelect.innerHTML += `<option value="${t.label}">${t.label}</option>`;
-        });
+        if (eventTiers.length === 0) {
+          tierSelect.innerHTML = '<option value="GA" selected>GA</option>';
+          tierSelect.removeAttribute('required');
+        } else {
+          tierSelect.innerHTML = '<option value="">— Selecciona categoría —</option>';
+          eventTiers.forEach(t => {
+            tierSelect.innerHTML += `<option value="${t.label}">${t.label}</option>`;
+          });
+        }
 
         // Nav links
         const scanLink = document.getElementById('scan-link');
@@ -800,23 +815,15 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       const phone = document.getElementById('add-phone').value.trim() || null;
       const notes = document.getElementById('add-notes').value.trim() || null;
       const tier = document.getElementById('add-tier').value || null;
+      const requestedBy = document.getElementById('add-requested-by').value.trim() || null;
+      const industry = document.getElementById('add-industry').value.trim() || null;
       const sendEmail = document.getElementById('add-send-email').checked;
       const plusN = parseInt(document.getElementById('add-plus').value) || 0;
 
       try {
-        if (plusN > 0) {
-          // Create primary + N extra guests via dedicated endpoint
-          await API.post(`/api/events/${slug}/guests`, {
-            name, email, phone, notes, tier,
-            send_email: sendEmail,
-            plus: plusN,
-          });
-        } else {
-          await API.post(`/api/events/${slug}/guests`, {
-            name, email, phone, notes, tier,
-            send_email: sendEmail,
-          });
-        }
+        const payload = { name, email, phone, notes, tier, requested_by: requestedBy, industry, send_email: sendEmail };
+        if (plusN > 0) payload.plus = plusN;
+        await API.post(`/api/events/${slug}/guests`, payload);
 
         // Reset form
         document.getElementById('add-name').value = '';
@@ -824,6 +831,8 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         document.getElementById('add-phone').value = '';
         document.getElementById('add-notes').value = '';
         document.getElementById('add-tier').value = '';
+        document.getElementById('add-requested-by').value = '';
+        document.getElementById('add-industry').value = '';
         document.getElementById('add-plus').value = '0';
 
         closeModal('add-modal');
@@ -1332,6 +1341,16 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) overlay.classList.remove('active');
       });
+    });
+
+    // Escape closes any open modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const open = document.querySelector('.modal-overlay.active');
+      if (open) {
+        e.preventDefault();
+        open.classList.remove('active');
+      }
     });
 
     init();

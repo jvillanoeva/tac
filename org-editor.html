@@ -444,11 +444,12 @@
     function renderMembers(members) {
       const list = document.getElementById('members-list');
       if (!members.length) { list.innerHTML = '<p class="text-sm text-secondary">Solo tú</p>'; return; }
+      const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
       list.innerHTML = members.map(m => `
         <div class="member-row">
           <div>
-            <span class="badge">${m.role}</span>
-            <span style="margin-left:8px;font-family:monospace;">${m.user_id.slice(0, 8)}…</span>
+            <span class="badge">${esc(m.role)}</span>
+            <span style="margin-left:8px;">${m.email ? esc(m.email) : `<span style="font-family:monospace;color:var(--text-muted);">${esc(m.user_id.slice(0, 8))}…</span>`}</span>
           </div>
           <button class="btn btn-danger btn-sm" onclick="removeMember('${m.user_id}')">✕</button>
         </div>
@@ -464,6 +465,11 @@
         showError(err.message);
       }
     }
+
+    // Escape = back to dashboard
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { window.location.href = '/dashboard.html'; }
+    });
 
     load();
   </script>
