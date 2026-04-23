@@ -193,21 +193,7 @@
   </nav>
 
   <div class="container page">
-    <div class="page-header">
-      <h1 class="hero" style="font-size:28px;color:#ffffff">Mis eventos</h1>
-      <div style="display:flex;gap:8px;">
-        <a href="/org-editor.html" class="btn hero">+ Nueva organización</a>
-        <a href="/event-editor.html" class="btn btn-primary hero">+ Nuevo evento</a>
-      </div>
-    </div>
-
-    <!-- Organizations strip -->
-    <div id="orgs-strip" style="display:none;margin-bottom:32px;">
-      <div class="section-label" style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:400;text-transform:uppercase;letter-spacing:0.18em;color:#4b5563;margin-bottom:8px;">Organizaciones</div>
-      <div id="orgs-list" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
-    </div>
-
-    <div id="events-container">
+    <div id="page-body">
       <div class="empty-state">
         <div class="spinner" style="margin:0 auto"></div>
       </div>
@@ -215,51 +201,96 @@
   </div>
 
   <style>
-    .org-chip {
+    /* Big org-card grid (default view) */
+    .orgs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .org-card {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      flex-direction: column;
+      gap: 10px;
+      padding: 20px;
       border: 1px solid #1f2937;
       text-decoration: none;
-      color: #e5e7eb;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.05em;
+      color: inherit;
       transition: border-color 120ms, background 120ms;
+      min-height: 140px;
+      cursor: pointer;
     }
-    .org-chip:hover { border-color: #374151; background: #1a1a1a; }
-    .org-chip img { height: 18px; max-width: 60px; object-fit: contain; filter: invert(1); }
-    .org-chip .type {
+    .org-card:hover { border-color: #374151; background: #1a1a1a; }
+    .org-card .logo-row { display: flex; align-items: center; gap: 12px; }
+    .org-card .logo-row img { height: 32px; max-width: 130px; object-fit: contain; filter: invert(1); }
+    .org-card .logo-row .placeholder {
+      width: 32px; height: 32px;
+      background: #1a1a1a;
+      border: 1px solid #1f2937;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
       color: #6b7280;
-      font-size: 9px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-    }
-    .org-section-header {
       display: flex;
       align-items: center;
+      justify-content: center;
+    }
+    .org-card .name {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 18px;
+      color: #ffffff;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+    .org-card .meta {
+      display: flex;
       gap: 12px;
-      margin-bottom: 8px;
-      margin-top: 32px;
+      align-items: center;
+      margin-top: auto;
     }
-    .org-section-header img { height: 20px; max-width: 80px; object-fit: contain; filter: invert(1); }
-    .org-section-header .org-name {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      color: #9ca3af;
-    }
-    .org-section-header a {
+    .org-card .type {
       font-family: 'IBM Plex Mono', monospace;
       font-size: 10px;
-      color: #4b5563;
+      color: #6b7280;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .org-card .count {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .org-card.add-card {
+      border-style: dashed;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+    }
+    .org-card.add-card:hover { color: #e5e7eb; border-color: #4b5563; }
+
+    /* Filter view breadcrumb */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+    }
+    .breadcrumb a {
+      color: #6b7280;
       text-decoration: none;
       letter-spacing: 0.1em;
-      margin-left: auto;
     }
-    .org-section-header a:hover { color: #9ca3af; }
+    .breadcrumb a:hover { color: #e5e7eb; }
+    .breadcrumb .sep { color: #374151; }
+    .breadcrumb .current { color: #e5e7eb; letter-spacing: 0.05em; }
+    .filter-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .filter-header img { height: 36px; max-width: 140px; object-fit: contain; filter: invert(1); }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -275,96 +306,170 @@
       document.getElementById('nav-email').textContent = session.user.email;
 
       try {
-        // Load orgs strip + events in parallel
         const [orgs, eventsResp] = await Promise.all([
           API.get('/api/orgs').catch(() => []),
           API.get('/api/events'),
         ]);
         const { owned = [], staffed = [], viaOrg = [] } = eventsResp;
 
-        // Render orgs strip
-        if (orgs.length > 0) {
-          document.getElementById('orgs-strip').style.display = '';
-          document.getElementById('orgs-list').innerHTML = orgs.map(o => `
-            <a href="/org-editor.html?slug=${o.slug}" class="org-chip">
-              ${o.logo_url ? `<img src="${o.logo_url}" alt="">` : ''}
-              <span>${esc(o.name)}</span>
-              <span class="type">${o.type}</span>
-            </a>
-          `).join('');
-        }
-
-        const container = document.getElementById('events-container');
-
-        if (owned.length === 0 && staffed.length === 0 && viaOrg.length === 0) {
-          container.innerHTML = `
-            <div class="empty-state">
-              <h3>No tienes eventos aún</h3>
-              <p class="text-secondary">Crea tu primer evento para empezar</p>
-              <a href="/event-editor.html" class="btn btn-primary mt-24">+ Nuevo evento</a>
-            </div>`;
-          return;
-        }
-
-        // Combine my events from all sources, group by organization
+        // Group events by org; collect standalone
         const allMyEvents = [...owned, ...viaOrg];
-        const byOrg = new Map();   // org_id -> { org, events[] }
+        const eventsByOrgId = new Map(); // org_id -> events[]
         const standalone = [];
-
         for (const ev of allMyEvents) {
-          if (ev.organizations && ev.organization_id) {
-            if (!byOrg.has(ev.organization_id)) {
-              byOrg.set(ev.organization_id, { org: ev.organizations, events: [] });
-            }
-            byOrg.get(ev.organization_id).events.push(ev);
+          if (ev.organization_id) {
+            if (!eventsByOrgId.has(ev.organization_id)) eventsByOrgId.set(ev.organization_id, []);
+            eventsByOrgId.get(ev.organization_id).push(ev);
           } else {
             standalone.push(ev);
           }
         }
 
-        let html = '';
+        const params = new URLSearchParams(location.search);
+        const filter = params.get('org'); // slug, __standalone, __staff, or null
 
-        // Render each org group
-        for (const { org, events } of byOrg.values()) {
-          html += `
-            <div class="org-section-header">
-              ${org.logo_url ? `<img src="${esc(org.logo_url)}" alt="">` : ''}
-              <span class="org-name">${esc(org.name)}</span>
-              <a href="/${esc(org.slug)}" target="_blank">Ver pública →</a>
-            </div>
-            <div class="events-list">
-              ${events.map(ev => renderEventCard(ev)).join('')}
-            </div>
-          `;
+        if (!filter) {
+          renderOrgListView({ orgs, eventsByOrgId, standalone, staffed });
+        } else {
+          renderFilterView({ filter, orgs, eventsByOrgId, standalone, staffed });
         }
-
-        // Standalone events (no org)
-        if (standalone.length > 0) {
-          html += `
-            <div class="section-label hero" style="font-size:11px;${byOrg.size > 0 ? 'margin-top:32px;' : ''}">Eventos independientes</div>
-            <div class="events-list">
-              ${standalone.map(ev => renderEventCard(ev)).join('')}
-            </div>
-          `;
-        }
-
-        // Staffed events
-        if (staffed.length > 0) {
-          html += '<div class="section-label" style="margin-top:32px;">Staff</div><div class="events-list">';
-          for (const ev of staffed) {
-            html += renderEventCard(ev, ev.staff_role);
-          }
-          html += '</div>';
-        }
-
-        container.innerHTML = html;
       } catch (err) {
-        document.getElementById('events-container').innerHTML = `
+        document.getElementById('page-body').innerHTML = `
           <div class="empty-state">
             <h3>Error al cargar eventos</h3>
-            <p class="text-secondary">${err.message}</p>
+            <p class="text-secondary">${esc(err.message)}</p>
           </div>`;
       }
+    }
+
+    function renderOrgListView({ orgs, eventsByOrgId, standalone, staffed }) {
+      const orgCards = orgs.map(o => {
+        const count = (eventsByOrgId.get(o.id) || []).length;
+        return `
+          <a href="/dashboard.html?org=${esc(o.slug)}" class="org-card">
+            <div class="logo-row">
+              ${o.logo_url ? `<img src="${esc(o.logo_url)}" alt="">` : `<div class="placeholder">${esc((o.name || '?')[0].toUpperCase())}</div>`}
+            </div>
+            <div class="name">${esc(o.name)}</div>
+            <div class="meta">
+              <span class="type">${o.type === 'venue' ? 'venue' : 'promotor'}</span>
+              <span class="count">${count} ${count === 1 ? 'evento' : 'eventos'}</span>
+            </div>
+          </a>
+        `;
+      }).join('');
+
+      const syntheticCards = [];
+      if (standalone.length > 0) {
+        syntheticCards.push(`
+          <a href="/dashboard.html?org=__standalone" class="org-card">
+            <div class="logo-row"><div class="placeholder">·</div></div>
+            <div class="name">Independientes</div>
+            <div class="meta"><span class="count">${standalone.length} ${standalone.length === 1 ? 'evento' : 'eventos'}</span></div>
+          </a>
+        `);
+      }
+      if (staffed.length > 0) {
+        syntheticCards.push(`
+          <a href="/dashboard.html?org=__staff" class="org-card">
+            <div class="logo-row"><div class="placeholder">★</div></div>
+            <div class="name">Como staff</div>
+            <div class="meta"><span class="count">${staffed.length} ${staffed.length === 1 ? 'evento' : 'eventos'}</span></div>
+          </a>
+        `);
+      }
+
+      const addCard = `
+        <a href="/org-editor.html" class="org-card add-card">
+          <div style="font-size:14px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.1em;">+ NUEVA ORGANIZACIÓN</div>
+        </a>
+      `;
+
+      const html = `
+        <div class="page-header">
+          <h1 class="hero" style="font-size:28px;color:#ffffff">Mis organizaciones</h1>
+        </div>
+        ${orgs.length === 0 && standalone.length === 0 && staffed.length === 0 ? `
+          <div class="empty-state">
+            <h3>Bienvenido</h3>
+            <p class="text-secondary">Crea una organización para empezar.</p>
+            <a href="/org-editor.html" class="btn btn-primary mt-24">+ Nueva organización</a>
+          </div>
+        ` : `
+          <div class="orgs-grid">
+            ${orgCards}
+            ${syntheticCards.join('')}
+            ${addCard}
+          </div>
+        `}
+      `;
+      document.getElementById('page-body').innerHTML = html;
+    }
+
+    function renderFilterView({ filter, orgs, eventsByOrgId, standalone, staffed }) {
+      let title, subtitle, logoUrl, events, orgSlug = null, extraActions = '';
+
+      if (filter === '__standalone') {
+        title = 'Independientes';
+        subtitle = 'Eventos sin organización';
+        events = standalone;
+      } else if (filter === '__staff') {
+        title = 'Como staff';
+        subtitle = 'Eventos de otras organizaciones donde colaboras';
+        events = staffed;
+      } else {
+        const org = orgs.find(o => o.slug === filter);
+        if (!org) {
+          document.getElementById('page-body').innerHTML = `
+            <div class="breadcrumb"><a href="/dashboard.html">← Organizaciones</a></div>
+            <div class="empty-state"><h3>Organización no encontrada</h3></div>`;
+          return;
+        }
+        title = org.name;
+        subtitle = org.type === 'venue' ? 'Venue' : 'Promotor';
+        logoUrl = org.logo_url;
+        events = eventsByOrgId.get(org.id) || [];
+        orgSlug = org.slug;
+        extraActions = `
+          <a href="/org-editor.html?slug=${esc(org.slug)}" class="btn hero">Editar organización</a>
+          <a href="/${esc(org.slug)}" target="_blank" class="btn hero">Ver pública →</a>
+        `;
+      }
+
+      const newEventHref = orgSlug
+        ? `/event-editor.html?org=${esc(orgSlug)}`
+        : `/event-editor.html`;
+
+      const html = `
+        <div class="breadcrumb">
+          <a href="/dashboard.html">← Organizaciones</a>
+          <span class="sep">/</span>
+          <span class="current">${esc(title)}</span>
+        </div>
+        <div class="filter-header">
+          ${logoUrl ? `<img src="${esc(logoUrl)}" alt="">` : ''}
+          <div style="flex:1">
+            <h1 class="hero" style="font-size:28px;color:#ffffff;margin:0;">${esc(title)}</h1>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b7280;letter-spacing:0.18em;text-transform:uppercase;margin-top:4px;">${esc(subtitle)}</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            ${extraActions}
+            <a href="${newEventHref}" class="btn btn-primary hero">+ Nuevo evento</a>
+          </div>
+        </div>
+        ${events.length === 0 ? `
+          <div class="empty-state">
+            <h3>Sin eventos aún</h3>
+            <p class="text-secondary">Crea el primero para empezar.</p>
+            <a href="${newEventHref}" class="btn btn-primary mt-24">+ Nuevo evento</a>
+          </div>
+        ` : `
+          <div class="events-list">
+            ${events.map(ev => renderEventCard(ev, filter === '__staff' ? ev.staff_role : null)).join('')}
+          </div>
+        `}
+      `;
+      document.getElementById('page-body').innerHTML = html;
     }
 
     function esc(s) {
