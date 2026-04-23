@@ -223,13 +223,11 @@
     .org-card:hover { border-color: #374151; background: #1a1a1a; }
     .org-card .logo-row { display: flex; align-items: center; gap: 12px; }
     .org-card .logo-row img {
-      height: 40px;
+      height: 36px;
       max-width: 140px;
       object-fit: contain;
-      background: #ffffff;
-      padding: 4px 8px;
-      border-radius: 4px;
     }
+    .org-card .logo-row img.inverted { filter: invert(1); }
     .org-card .logo-row .placeholder {
       width: 32px; height: 32px;
       background: #1a1a1a;
@@ -297,7 +295,8 @@
       gap: 16px;
       margin-bottom: 24px;
     }
-    .filter-header img { height: 36px; max-width: 140px; object-fit: contain; filter: invert(1); }
+    .filter-header img { height: 36px; max-width: 140px; object-fit: contain; }
+    .filter-header img.inverted { filter: invert(1); }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -355,7 +354,7 @@
         return `
           <a href="/dashboard.html?org=${esc(o.slug)}" class="org-card">
             <div class="logo-row">
-              ${o.logo_url ? `<img src="${esc(o.logo_url)}" alt="">` : `<div class="placeholder">${esc((o.name || '?')[0].toUpperCase())}</div>`}
+              ${o.logo_url ? `<img src="${esc(o.logo_url)}" alt="" class="${o.logo_invert ? 'inverted' : ''}">` : `<div class="placeholder">${esc((o.name || '?')[0].toUpperCase())}</div>`}
             </div>
             <div class="name">${esc(o.name)}</div>
             <div class="meta">
@@ -408,7 +407,7 @@
     }
 
     function renderFilterView({ filter, orgs, eventsByOrgId, standalone, staffed }) {
-      let title, subtitle, logoUrl, events, orgSlug = null, extraActions = '';
+      let title, subtitle, logoUrl, logoInvert = false, events, orgSlug = null, extraActions = '';
 
       if (filter === '__standalone') {
         title = 'Independientes';
@@ -429,6 +428,7 @@
         title = org.name;
         subtitle = org.type === 'venue' ? 'Venue' : 'Promotor';
         logoUrl = org.logo_url;
+        logoInvert = !!org.logo_invert;
         events = eventsByOrgId.get(org.id) || [];
         orgSlug = org.slug;
         extraActions = `
@@ -448,7 +448,7 @@
           <span class="current">${esc(title)}</span>
         </div>
         <div class="filter-header">
-          ${logoUrl ? `<img src="${esc(logoUrl)}" alt="">` : ''}
+          ${logoUrl ? `<img src="${esc(logoUrl)}" alt="" class="${logoInvert ? 'inverted' : ''}">` : ''}
           <div style="flex:1">
             <h1 class="hero" style="font-size:28px;color:#ffffff;margin:0;">${esc(title)}</h1>
             <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b7280;letter-spacing:0.18em;text-transform:uppercase;margin-top:4px;">${esc(subtitle)}</div>

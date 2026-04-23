@@ -283,6 +283,15 @@
     async function uploadImage(input, kind) {
       const file = input.files[0];
       if (!file) return;
+
+      // For logos, analyze luminance before upload to decide if we should invert
+      // on dark UIs. Runs locally off a blob URL (no CORS). For SVG we skip and
+      // default to no invert — canvas can't easily sample vector art without a DOM render.
+      let logoInvert = null;
+      if (kind === 'logo' && file.type !== 'image/svg+xml') {
+        try { logoInvert = await computeShouldInvert(file); } catch (e) { /* ignore */ }
+      }
+
       const formData = new FormData();
       formData.append('image', file);
       try {
@@ -295,12 +304,54 @@
         if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
         const { url } = await res.json();
         state[`${kind}_url`] = url;
+        if (kind === 'logo' && logoInvert !== null) state.logo_invert = logoInvert;
         const preview = document.getElementById(`${kind}-preview`);
         preview.src = url;
         preview.classList.remove('hidden');
       } catch (err) {
         showError('Error al subir imagen: ' + err.message);
       }
+    }
+
+    // Sample non-transparent pixels and return true if the logo is predominantly
+    // dark (and would therefore be invisible on a dark background, so we should
+    // invert it when rendering on dark themes).
+    function computeShouldInvert(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          try {
+            const MAX = 64;
+            const scale = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
+            const w = Math.max(1, Math.round(img.naturalWidth * scale));
+            const h = Math.max(1, Math.round(img.naturalHeight * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const { data } = ctx.getImageData(0, 0, w, h);
+            let sum = 0, count = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              const a = data[i + 3];
+              if (a < 32) continue; // skip transparent pixels
+              // Rec. 709 luma approximation
+              const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+              sum += lum;
+              count++;
+            }
+            URL.revokeObjectURL(url);
+            if (count === 0) return resolve(false);
+            const avg = sum / count; // 0..255
+            resolve(avg < 128); // dark = invert for dark bg
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            reject(err);
+          }
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+        img.src = url;
+      });
     }
 
     async function load() {
@@ -331,6 +382,7 @@
 
         if (org.logo_url) {
           state.logo_url = org.logo_url;
+          state.logo_invert = !!org.logo_invert;
           const p = document.getElementById('logo-preview');
           p.src = org.logo_url;
           p.classList.remove('hidden');
@@ -379,6 +431,7 @@
         website: document.getElementById('website').value.trim() || null,
         guestlist_url: document.getElementById('guestlist_url').value.trim() || null,
         logo_url: state.logo_url || null,
+        logo_invert: state.logo_invert === true,
         banner_url: state.banner_url || null,
         brand_color: state.brand_color,
         default_theme: state.default_theme,
