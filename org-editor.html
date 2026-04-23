@@ -284,7 +284,7 @@
       const file = input.files[0];
       if (!file) return;
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('image', file);
       try {
         const token = await Auth.getToken();
         const res = await fetch(`${CONFIG.API_URL}/api/upload`, {
