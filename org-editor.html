@@ -41,7 +41,31 @@
       background: var(--bg-input);
       border: 1px solid var(--border);
       margin-bottom: 12px;
+      cursor: pointer;
+      transition: opacity 120ms;
     }
+    .upload-preview:hover { opacity: 0.85; }
+    .media-slot { position: relative; }
+    .media-remove-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: background 120ms, border-color 120ms;
+    }
+    .media-remove-btn:hover { background: rgba(220,38,38,0.9); border-color: rgba(255,255,255,0.3); }
     .type-pills {
       display: flex;
       gap: 8px;
@@ -189,18 +213,24 @@
       <div>
         <div class="card" style="position:sticky; top:16px; padding:16px;">
           <div class="editor-section-title">Logo</div>
-          <img id="logo-preview" class="upload-preview hidden" alt="">
+          <div class="media-slot">
+            <img id="logo-preview" class="upload-preview hidden" alt="" onclick="document.getElementById('logo-file').click()">
+            <button type="button" id="logo-remove-btn" class="media-remove-btn hidden" onclick="removeMedia('logo')" aria-label="Quitar logo">✕</button>
+          </div>
           <div class="upload-zone" onclick="document.getElementById('logo-file').click()">
             <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="uploadImage(this, 'logo')">
-            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para subir</div>
+            <div id="logo-upload-label" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para subir</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">PNG, JPG, SVG · max 5MB</div>
           </div>
 
           <div class="editor-section-title" style="margin-top:24px;">Banner (opcional)</div>
-          <img id="banner-preview" class="upload-preview hidden" alt="">
+          <div class="media-slot">
+            <img id="banner-preview" class="upload-preview hidden" alt="" onclick="document.getElementById('banner-file').click()">
+            <button type="button" id="banner-remove-btn" class="media-remove-btn hidden" onclick="removeMedia('banner')" aria-label="Quitar banner">✕</button>
+          </div>
           <div class="upload-zone" onclick="document.getElementById('banner-file').click()">
             <input type="file" id="banner-file" accept="image/*" style="display:none" onchange="uploadImage(this, 'banner')">
-            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para subir</div>
+            <div id="banner-upload-label" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Click para subir</div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">1600x700px recomendado</div>
           </div>
 
@@ -280,6 +310,27 @@
       setTimeout(() => bar.classList.add('hidden'), 5000);
     }
 
+    // Toggle the remove button + upload label between "subir" and "reemplazar"
+    // so the user can tell at a glance that re-uploading replaces the file.
+    function setMediaLoaded(kind, loaded) {
+      const removeBtn = document.getElementById(`${kind}-remove-btn`);
+      const label = document.getElementById(`${kind}-upload-label`);
+      if (removeBtn) removeBtn.classList.toggle('hidden', !loaded);
+      if (label) label.textContent = loaded ? 'Click para reemplazar' : 'Click para subir';
+    }
+
+    function removeMedia(kind) {
+      if (!confirm(kind === 'logo' ? '¿Quitar el logo?' : '¿Quitar el banner?')) return;
+      state[`${kind}_url`] = null;
+      if (kind === 'logo') state.logo_invert = false;
+      const preview = document.getElementById(`${kind}-preview`);
+      preview.src = '';
+      preview.classList.add('hidden');
+      const input = document.getElementById(`${kind}-file`);
+      if (input) input.value = '';
+      setMediaLoaded(kind, false);
+    }
+
     async function uploadImage(input, kind) {
       const file = input.files[0];
       if (!file) return;
@@ -317,6 +368,7 @@
         const preview = document.getElementById(`${kind}-preview`);
         preview.src = url;
         preview.classList.remove('hidden');
+        setMediaLoaded(kind, true);
       } catch (err) {
         showError('Error al subir imagen: ' + err.message);
       }
@@ -416,12 +468,14 @@
           const p = document.getElementById('logo-preview');
           p.src = org.logo_url;
           p.classList.remove('hidden');
+          setMediaLoaded('logo', true);
         }
         if (org.banner_url) {
           state.banner_url = org.banner_url;
           const p = document.getElementById('banner-preview');
           p.src = org.banner_url;
           p.classList.remove('hidden');
+          setMediaLoaded('banner', true);
         }
         if (org.brand_color) {
           state.brand_color = org.brand_color;
