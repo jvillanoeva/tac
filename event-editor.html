@@ -112,6 +112,35 @@
         position: static;
       }
     }
+    /* Org chips */
+    .org-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .org-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent;
+      border: 1px solid var(--border, #2a2a2a);
+      color: var(--text, #e5e7eb);
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 999px;
+      transition: background 120ms, border-color 120ms, color 120ms;
+    }
+    .org-chip:hover { border-color: #4b5563; }
+    .org-chip.selected {
+      background: var(--text, #f3f4f6);
+      color: var(--bg, #0a0a0a);
+      border-color: var(--text, #f3f4f6);
+    }
+    .org-chip img { height: 14px; max-width: 40px; object-fit: contain; }
+    .org-chip-type {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      opacity: 0.6;
+    }
+    .org-chip.add-chip { color: var(--text-secondary, #9ca3af); border-style: dashed; }
   </style>
 </head>
 <body>
@@ -137,9 +166,17 @@
         <div class="editor-section" id="org-picker-section">
           <div class="editor-section-title">Organización</div>
           <div class="form-group">
-            <select class="form-input" id="organization_id" onchange="onOrgChange()">
-              <option value="">— Sin organización (evento independiente) —</option>
-            </select>
+            <div class="org-chips" id="org-chips"></div>
+            <input type="hidden" id="organization_id">
+            <div class="org-new-form hidden" id="org-new-form" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+              <input type="text" class="form-input" id="new-org-name" placeholder="Nombre de la organización" style="flex:1;min-width:180px;">
+              <select class="form-input" id="new-org-type" style="width:auto;">
+                <option value="venue">Venue</option>
+                <option value="promoter">Promotor</option>
+              </select>
+              <button type="button" class="btn btn-primary btn-sm" onclick="createNewOrg()" id="new-org-btn">Crear</button>
+              <button type="button" class="btn btn-sm" onclick="toggleNewOrgForm(false)">Cancelar</button>
+            </div>
             <div class="text-xs text-muted mt-8" id="org-hint">El evento heredará la marca (logo, color, banner) de la organización si no las defines aquí.</div>
           </div>
         </div>
@@ -350,16 +387,69 @@ Entry Details:
     async function loadMyOrgs() {
       try {
         myOrgs = await API.get('/api/orgs');
-        const select = document.getElementById('organization_id');
-        // Keep the first "no org" option, append the rest
-        myOrgs.forEach(org => {
-          const opt = document.createElement('option');
-          opt.value = org.id;
-          opt.textContent = `${org.name} (${org.type === 'venue' ? 'venue' : 'promoter'})`;
-          select.appendChild(opt);
-        });
       } catch (e) {
         console.warn('Could not load orgs:', e.message);
+        myOrgs = [];
+      }
+      renderOrgChips();
+    }
+
+    function renderOrgChips() {
+      const row = document.getElementById('org-chips');
+      if (!row) return;
+      const current = document.getElementById('organization_id').value;
+      const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+      const noneChip = `<button type="button" class="org-chip ${!current ? 'selected' : ''}" data-org-id="" onclick="selectOrgChip(this)">Sin organización</button>`;
+      const orgChips = myOrgs.map(o => `
+        <button type="button" class="org-chip ${current === o.id ? 'selected' : ''}" data-org-id="${esc(o.id)}" onclick="selectOrgChip(this)">
+          ${o.logo_url ? `<img src="${esc(o.logo_url)}" alt="">` : ''}
+          <span>${esc(o.name)}</span>
+          <span class="org-chip-type">${o.type === 'venue' ? 'venue' : 'promotor'}</span>
+        </button>
+      `).join('');
+      const addChip = `<button type="button" class="org-chip add-chip" onclick="toggleNewOrgForm(true)">+ Nueva</button>`;
+      row.innerHTML = noneChip + orgChips + addChip;
+    }
+
+    function selectOrgChip(btn) {
+      document.querySelectorAll('#org-chips .org-chip').forEach(c => c.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('organization_id').value = btn.dataset.orgId || '';
+      toggleNewOrgForm(false);
+      onOrgChange();
+    }
+
+    function toggleNewOrgForm(show) {
+      const form = document.getElementById('org-new-form');
+      if (!form) return;
+      form.classList.toggle('hidden', !show);
+      if (show) {
+        setTimeout(() => document.getElementById('new-org-name').focus(), 0);
+      } else {
+        document.getElementById('new-org-name').value = '';
+      }
+    }
+
+    async function createNewOrg() {
+      const name = document.getElementById('new-org-name').value.trim();
+      const type = document.getElementById('new-org-type').value;
+      if (!name) { showAlert('El nombre es obligatorio'); return; }
+      const btn = document.getElementById('new-org-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creando…';
+      try {
+        const newOrg = await API.post('/api/orgs', { name, type });
+        myOrgs.push(newOrg);
+        document.getElementById('organization_id').value = newOrg.id;
+        renderOrgChips();
+        toggleNewOrgForm(false);
+        onOrgChange();
+        showAlert(`Organización "${newOrg.name}" creada`, 'success');
+      } catch (err) {
+        showAlert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear';
       }
     }
 
@@ -544,6 +634,7 @@ Entry Details:
         const o = myOrgs.find(o => o.slug === orgSlugFromUrl);
         if (o) {
           document.getElementById('organization_id').value = o.id;
+          renderOrgChips();
           onOrgChange();
         }
       }
@@ -560,6 +651,9 @@ Entry Details:
           const el = document.getElementById(field);
           if (el && event[field]) el.value = event[field];
         }
+
+        // Reflect loaded org in the chip row
+        renderOrgChips();
 
         document.getElementById('slug-preview').textContent = event.slug;
 
