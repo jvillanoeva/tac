@@ -222,7 +222,14 @@
     }
     .org-card:hover { border-color: #374151; background: #1a1a1a; }
     .org-card .logo-row { display: flex; align-items: center; gap: 12px; }
-    .org-card .logo-row img { height: 32px; max-width: 130px; object-fit: contain; filter: invert(1); }
+    .org-card .logo-row img {
+      height: 40px;
+      max-width: 140px;
+      object-fit: contain;
+      background: #ffffff;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
     .org-card .logo-row .placeholder {
       width: 32px; height: 32px;
       background: #1a1a1a;
@@ -379,15 +386,10 @@
         `);
       }
 
-      const addCard = `
-        <a href="/org-editor.html" class="org-card add-card">
-          <div style="font-size:14px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.1em;">+ NUEVA ORGANIZACIÓN</div>
-        </a>
-      `;
-
       const html = `
         <div class="page-header">
           <h1 class="hero" style="font-size:28px;color:#ffffff">Mis organizaciones</h1>
+          <a href="/org-editor.html" class="btn btn-sm hero" style="font-size:12px;">+ Nueva</a>
         </div>
         ${orgs.length === 0 && standalone.length === 0 && staffed.length === 0 ? `
           <div class="empty-state">
@@ -399,7 +401,6 @@
           <div class="orgs-grid">
             ${orgCards}
             ${syntheticCards.join('')}
-            ${addCard}
           </div>
         `}
       `;
