@@ -52,19 +52,23 @@
 
     /* ── Layout ────────────────────────────────────────────────────── */
     .event-card {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 16px;
       border: 1px solid #1f2937;
-      cursor: pointer;
       transition: border-color 120ms ease, background 120ms ease;
-      text-decoration: none;
-      color: inherit;
+      position: relative;
     }
     .event-card:hover {
       border-color: #374151;
       background: #1a1a1a;
+    }
+    .event-card-link {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      padding-right: 44px; /* leave room for kebab */
     }
     .event-thumb {
       width: 64px;
@@ -92,7 +96,6 @@
       flex-direction: column;
       gap: 2px;
     }
-    .event-card { position: relative; }
     .event-menu-btn {
       position: absolute;
       top: 12px;
@@ -106,19 +109,30 @@
       line-height: 1;
       z-index: 2;
       font-family: inherit;
+      border-radius: 4px;
+      transition: color 120ms, background 120ms;
     }
-    .event-menu-btn:hover { color: #9ca3af; }
+    .event-menu-btn:hover { color: #e5e7eb; background: rgba(255,255,255,0.04); }
     .event-menu {
-      display: none;
       position: absolute;
-      top: 36px;
+      top: 40px;
       right: 12px;
       background: #1a1a1a;
       border: 1px solid #2a2a2a;
       z-index: 10;
       min-width: 160px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+      transform-origin: top right;
+      pointer-events: none;
+      transition: opacity 140ms ease, transform 140ms ease;
     }
-    .event-menu.open { display: block; }
+    .event-menu.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
     .event-menu a, .event-menu button {
       display: block;
       width: 100%;
@@ -383,17 +397,19 @@
       ` : '';
 
       return `
-        <a href="/guestlist.html?slug=${ev.slug}" class="event-card">
-          ${thumb}
-          <div class="event-info">
-            <div class="event-name hero">${ev.name}</div>
-            <div class="event-meta">
-              ${ev.date_label || ''}${ev.venue ? ' · ' + ev.venue : ''}
+        <div class="event-card">
+          <a href="/guestlist.html?slug=${ev.slug}" class="event-card-link">
+            ${thumb}
+            <div class="event-info">
+              <div class="event-name hero">${ev.name}</div>
+              <div class="event-meta">
+                ${ev.date_label || ''}${ev.venue ? ' · ' + ev.venue : ''}
+              </div>
+              <div class="mt-8">${badge}${roleLabel}</div>
             </div>
-            <div class="mt-8">${badge}${roleLabel}</div>
-          </div>
+          </a>
           ${menu}
-        </a>`;
+        </div>`;
     }
 
     function toggleMenu(slug) {
