@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sunday Sunday — Reporte</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #0a0a0a;
+      color: #e5e7eb;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .nav {
+      height: 56px;
+      padding: 0 24px;
+      background: #111;
+      border-bottom: 1px solid #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      font-family: 'Archivo Black', Arial, sans-serif;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .nav-brand span { color: #9ca3af; font-family: 'IBM Plex Mono', monospace; font-weight: 400; font-size: 11px; margin-left: 10px; text-transform: lowercase; letter-spacing: 0; }
+    .nav-user {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #6b7280;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .nav-user button {
+      background: none;
+      border: none;
+      color: #6b7280;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+    }
+    .nav-user button:hover { color: #e5e7eb; }
+
+    .container { max-width: 1040px; margin: 0 auto; padding: 32px 24px 64px; }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 28px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hero h1 {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 300;
+      font-size: 28px;
+      margin: 0 0 4px 0;
+    }
+    .hero .sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    button.primary {
+      background: #e5e7eb;
+      color: #0a0a0a;
+      border: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: opacity 120ms ease;
+    }
+    button.primary:hover { opacity: 0.85; }
+    button.primary:disabled { opacity: 0.4; cursor: wait; }
+
+    button.ghost {
+      background: transparent;
+      color: #9ca3af;
+      border: 1px solid #1f2937;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 9px 14px;
+      cursor: pointer;
+    }
+    button.ghost:hover { border-color: #374151; color: #e5e7eb; }
+
+    /* ── Event list ── */
+    .event-list { display: flex; flex-direction: column; gap: 8px; }
+    .event-card {
+      border: 1px solid #1f2937;
+      background: #0f0f0f;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 110px 1fr auto;
+      gap: 24px;
+      align-items: center;
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .event-card:hover { border-color: #374151; background: #141414; }
+    .event-card .date {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: #e5e7eb;
+      letter-spacing: 0.02em;
+    }
+    .event-card .date .wd { display: block; color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .event-card .kpis {
+      display: flex;
+      gap: 24px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+    }
+    .event-card .kpi .label { color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; display: block; }
+    .event-card .kpi .value { color: #e5e7eb; font-size: 14px; }
+
+    .badge {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 0;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge.settled { background: rgba(52, 211, 153, 0.12); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+    .badge.pending { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.28); }
+
+    .empty {
+      text-align: center;
+      padding: 80px 24px;
+      color: #6b7280;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+    }
+
+    /* ── Detail view ── */
+    .detail-header { margin-bottom: 28px; }
+    .detail-header .back {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #6b7280;
+      cursor: pointer;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+    .detail-header .back:hover { color: #e5e7eb; }
+
+    .section-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #6b7280;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin: 32px 0 12px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1px;
+      background: #1f2937;
+      border: 1px solid #1f2937;
+    }
+    .kpi-tile {
+      background: #0f0f0f;
+      padding: 16px 18px;
+    }
+    .kpi-tile .k {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .kpi-tile .v {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 400;
+      font-size: 22px;
+      color: #e5e7eb;
+    }
+    .kpi-tile .hint {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .kpi-tile.wide .v { font-size: 26px; }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #0f0f0f;
+      border: 1px solid #1f2937;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+    }
+    .modal h2 {
+      margin: 0 0 4px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 400;
+      font-size: 20px;
+    }
+    .modal .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280; margin-bottom: 20px; }
+    .modal form { display: flex; flex-direction: column; gap: 14px; }
+    .modal label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .modal input, .modal textarea {
+      background: #070707;
+      border: 1px solid #1f2937;
+      color: #e5e7eb;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    .modal input:focus, .modal textarea:focus { border-color: #374151; }
+    .modal textarea { min-height: 70px; resize: vertical; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      padding: 20px 32px;
+      border-radius: 8px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 180ms ease;
+      color: #fff;
+    }
+    #toast.error   { background: rgba(239, 68, 68, 0.95); }
+    #toast.success { background: rgba(34, 197, 94, 0.95); }
+    #toast.info    { background: rgba(59, 130, 246, 0.95); }
+    #toast.open { opacity: 1; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 680px) {
+      .event-card { grid-template-columns: 84px 1fr; gap: 16px; padding: 14px; }
+      .event-card .badge { grid-column: 2; justify-self: start; margin-top: 4px; }
+      .event-card .kpis { grid-column: 1 / -1; gap: 16px; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-brand">Sunday Sunday <span>reporte</span></div>
+    <div class="nav-user">
+      <span id="nav-user-email"></span>
+      <button id="nav-signout">Salir</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- LIST VIEW -->
+    <div id="view-list">
+      <div class="hero">
+        <div>
+          <h1>Eventos</h1>
+          <div class="sub">Ordenados por fecha</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="primary" id="btn-scrape">Scrape ahora</button>
+        </div>
+      </div>
+      <div id="event-list" class="event-list"></div>
+      <div id="list-empty" class="empty hidden">Aún no hay eventos. Pulsa "Scrape ahora" para traer el último.</div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="view-detail" class="hidden">
+      <div class="detail-header">
+        <div class="back" id="back-to-list">← Eventos</div>
+        <div class="hero" style="margin-bottom:0;">
+          <div>
+            <h1 id="detail-title">—</h1>
+            <div class="sub" id="detail-sub">—</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span id="detail-badge" class="badge pending">Sin settle</span>
+            <button class="ghost" id="btn-settle">Settle</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Resumen financiero</div>
+      <div id="kpi-financial" class="kpi-grid"></div>
+
+      <div class="section-title">myCashless (scraped)</div>
+      <div id="kpi-cashless" class="kpi-grid"></div>
+
+      <div class="section-title">Settlement (manual)</div>
+      <div id="kpi-settlement" class="kpi-grid"></div>
+
+      <div class="section-title">Reportes raw</div>
+      <div id="raw-list" style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6b7280;"></div>
+    </div>
+  </div>
+
+  <!-- SETTLEMENT MODAL -->
+  <div class="modal-backdrop" id="settle-modal">
+    <div class="modal">
+      <h2>Settle</h2>
+      <div class="sub" id="settle-sub">—</div>
+      <form id="settle-form">
+        <label>Door count (personas escaneadas)
+          <input type="number" step="1" name="door_count" placeholder="0">
+        </label>
+        <label>Ticket count (boletos vendidos)
+          <input type="number" step="1" name="ticket_count" placeholder="0">
+        </label>
+        <label>Ticket revenue (MXN)
+          <input type="number" step="0.01" name="ticket_revenue" placeholder="0.00">
+        </label>
+        <label>Cover revenue (MXN)
+          <input type="number" step="0.01" name="cover_revenue" placeholder="0.00">
+        </label>
+        <label>Nómina total (MXN)
+          <input type="number" step="0.01" name="nomina" placeholder="0.00">
+        </label>
+        <label>Cash tips (MXN)
+          <input type="number" step="0.01" name="cash_tips" placeholder="0.00">
+        </label>
+        <label>COGS override (MXN)
+          <input type="number" step="0.01" name="cogs_override" placeholder="Dejar vacío = usar COGS calculado">
+        </label>
+        <label>Otros costos (MXN)
+          <input type="number" step="0.01" name="other_costs" placeholder="0.00">
+        </label>
+        <label>Notas
+          <textarea name="notes" placeholder="Algo fuera de lo normal..."></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="ghost" id="settle-cancel">Cancelar</button>
+          <button type="submit" class="primary" id="settle-save">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const ORG_SLUG = 'sundaysunday';
+
+    // ─── toast ─────────────────────────────────────────────
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = type;
+      requestAnimationFrame(() => el.classList.add('open'));
+      clearTimeout(showToast._t);
+      const hold = type === 'error' ? 4000 : 2200;
+      showToast._t = setTimeout(() => el.classList.remove('open'), hold);
+    }
+
+    // ─── formatters ────────────────────────────────────────
+    const fmtMXN = n => (n == null || isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 });
+    const fmtMXNDec = n => (n == null || isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtInt = n => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('es-MX');
+    const fmtPct = n => (n == null || isNaN(n)) ? '—' : (Number(n) * 100).toFixed(1) + '%';
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    function fmtWeekday(iso) {
+      if (!iso) return '';
+      const d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('es-MX', { weekday: 'short' });
+    }
+
+    // ─── auth bootstrap ────────────────────────────────────
+    Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    API.init(CONFIG.API_URL);
+
+    // ─── state + routing ───────────────────────────────────
+    let state = {
+      view: 'list',        // 'list' | 'detail'
+      events: [],
+      currentEvent: null,  // full detail object
+      currentDate: null,   // YYYY-MM-DD
+    };
+
+    function parseHash() {
+      const h = (location.hash || '').replace(/^#\/?/, '');
+      if (!h) return { view: 'list' };
+      const m = h.match(/^event\/(\d{4}-\d{2}-\d{2})$/);
+      if (m) return { view: 'detail', date: m[1] };
+      return { view: 'list' };
+    }
+
+    function goList() {
+      location.hash = '';
+    }
+    function goDetail(date) {
+      location.hash = `#/event/${date}`;
+    }
+
+    window.addEventListener('hashchange', render);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('settle-modal');
+        if (modal.classList.contains('open')) { closeSettleModal(); return; }
+        if (state.view === 'detail') goList();
+      }
+    });
+
+    // ─── render ────────────────────────────────────────────
+    async function render() {
+      const route = parseHash();
+      if (route.view === 'detail') {
+        state.view = 'detail';
+        state.currentDate = route.date;
+        document.getElementById('view-list').classList.add('hidden');
+        document.getElementById('view-detail').classList.remove('hidden');
+        await loadEvent(route.date);
+      } else {
+        state.view = 'list';
+        state.currentEvent = null;
+        state.currentDate = null;
+        document.getElementById('view-detail').classList.add('hidden');
+        document.getElementById('view-list').classList.remove('hidden');
+        await loadList();
+      }
+    }
+
+    // ─── list ──────────────────────────────────────────────
+    async function loadList() {
+      const listEl = document.getElementById('event-list');
+      const emptyEl = document.getElementById('list-empty');
+      listEl.innerHTML = `<div class="empty">Cargando…</div>`;
+      emptyEl.classList.add('hidden');
+
+      try {
+        state.events = await API.get(`/api/ss/${ORG_SLUG}/events`);
+      } catch (err) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        emptyEl.textContent = 'Error: ' + err.message;
+        return;
+      }
+
+      if (!state.events.length) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+
+      listEl.innerHTML = '';
+      state.events.forEach(ev => {
+        const sum = (ev.ss_summary && ev.ss_summary[0]) || ev.ss_summary || {};
+        const settledBadge = ev.settled_at
+          ? `<span class="badge settled">Settled</span>`
+          : `<span class="badge pending">Pendiente</span>`;
+
+        const card = document.createElement('div');
+        card.className = 'event-card';
+        card.onclick = () => goDetail(ev.event_date);
+        card.innerHTML = `
+          <div class="date">
+            <span class="wd">${fmtWeekday(ev.event_date)}</span>
+            ${fmtDate(ev.event_date)}
+          </div>
+          <div class="kpis">
+            <div class="kpi">
+              <span class="label">Ventas</span>
+              <span class="value">${fmtMXN(sum.ventas)}</span>
+            </div>
+            <div class="kpi">
+              <span class="label">Chips</span>
+              <span class="value">${fmtInt(sum.chips_activados)}</span>
+            </div>
+            <div class="kpi">
+              <span class="label">$/chip</span>
+              <span class="value">${fmtMXN(sum.avg_venta_chip)}</span>
+            </div>
+          </div>
+          ${settledBadge}
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
+    // ─── detail ────────────────────────────────────────────
+    async function loadEvent(date) {
+      const titleEl = document.getElementById('detail-title');
+      const subEl = document.getElementById('detail-sub');
+      titleEl.textContent = 'Cargando…';
+      subEl.textContent = date;
+
+      try {
+        state.currentEvent = await API.get(`/api/ss/${ORG_SLUG}/events/${date}`);
+      } catch (err) {
+        titleEl.textContent = 'No se encontró el evento';
+        subEl.textContent = err.message;
+        return;
+      }
+      renderDetail();
+    }
+
+    function renderDetail() {
+      const ev = state.currentEvent;
+      if (!ev) return;
+      const sum = (ev.ss_summary && (Array.isArray(ev.ss_summary) ? ev.ss_summary[0] : ev.ss_summary)) || {};
+      const set = (ev.ss_settlement && (Array.isArray(ev.ss_settlement) ? ev.ss_settlement[0] : ev.ss_settlement)) || {};
+
+      document.getElementById('detail-title').textContent = ev.source_event_name || `Evento ${fmtDate(ev.event_date)}`;
+      const scrapedTxt = ev.scraped_at ? `Scraped ${new Date(ev.scraped_at).toLocaleString('es-MX')}` : 'Nunca scraped';
+      document.getElementById('detail-sub').textContent = `${fmtDate(ev.event_date)} · ${scrapedTxt}`;
+
+      const badge = document.getElementById('detail-badge');
+      if (ev.settled_at) { badge.className = 'badge settled'; badge.textContent = 'Settled'; }
+      else { badge.className = 'badge pending'; badge.textContent = 'Sin settle'; }
+
+      // Financial KPIs (computed)
+      const cashless = Number(sum.ventas || 0) + Number(sum.propinas || 0); // cashless gross
+      const ticket = Number(set.ticket_revenue || 0) + Number(set.cover_revenue || 0);
+      const grossRevenue = cashless + ticket;
+      const nomina = Number(set.nomina || 0);
+      const cogsOverride = (set.cogs_override !== null && set.cogs_override !== undefined) ? Number(set.cogs_override) : null;
+      const otherCosts = Number(set.other_costs || 0);
+      const totalCosts = (cogsOverride || 0) + nomina + otherCosts;
+      const netRevenue = grossRevenue - totalCosts;
+      const nominaPct = grossRevenue > 0 ? nomina / grossRevenue : null;
+      const costPct = grossRevenue > 0 ? totalCosts / grossRevenue : null;
+      const avgSpendChip = sum.chips_activados > 0
+        ? (Number(sum.ventas || 0) + Number(sum.propinas || 0)) / Number(sum.chips_activados)
+        : null;
+
+      document.getElementById('kpi-financial').innerHTML = [
+        kpiTile('Ingresos brutos', fmtMXN(grossRevenue), `Cashless ${fmtMXN(cashless)} + Ticket ${fmtMXN(ticket)}`),
+        kpiTile('COGS', cogsOverride != null ? fmtMXN(cogsOverride) : '—', cogsOverride != null ? 'override' : 'sin captura'),
+        kpiTile('Nómina', fmtMXN(nomina), nominaPct != null ? `${fmtPct(nominaPct)} de brutos` : ''),
+        kpiTile('Costo total %', costPct != null ? fmtPct(costPct) : '—', fmtMXN(totalCosts)),
+        kpiTile('Neto', fmtMXN(netRevenue), ''),
+        kpiTile('Door count', fmtInt(set.door_count), ''),
+      ].join('');
+
+      document.getElementById('kpi-cashless').innerHTML = [
+        kpiTile('Chips activados', fmtInt(sum.chips_activados)),
+        kpiTile('Recargas', fmtMXN(sum.recargas), `${fmtInt(sum.recargas_count)} tx`),
+        kpiTile('Ventas (saldo)', fmtMXN(sum.ventas), `${fmtInt(sum.ventas_count)} tx`),
+        kpiTile('Ventas totales', fmtMXN(sum.ventas_totales), `${fmtInt(sum.ventas_totales_count)} tx`),
+        kpiTile('Propinas', fmtMXN(sum.propinas), `${fmtInt(sum.propinas_count)} tx`),
+        kpiTile('Devoluciones', fmtMXN(sum.devoluciones), `${fmtInt(sum.devoluciones_count)} tx`),
+        kpiTile('Saldo en circulación', fmtMXN(sum.saldo_circulacion)),
+        kpiTile('Promo recargas', fmtMXN(sum.promo_recargas)),
+        kpiTile('Promo ventas', fmtMXN(sum.promo_ventas)),
+        kpiTile('$/chip (ventas)', fmtMXNDec(sum.avg_venta_chip)),
+        kpiTile('$/chip (propina)', fmtMXNDec(sum.avg_propina_chip)),
+        kpiTile('Venta promedio', fmtMXNDec(sum.avg_venta_tx)),
+      ].join('');
+
+      document.getElementById('kpi-settlement').innerHTML = [
+        kpiTile('Nómina', fmtMXN(set.nomina)),
+        kpiTile('Cash tips', fmtMXN(set.cash_tips)),
+        kpiTile('COGS override', set.cogs_override != null ? fmtMXN(set.cogs_override) : '—'),
+        kpiTile('Door count', fmtInt(set.door_count)),
+        kpiTile('Boletos', fmtInt(set.ticket_count), fmtMXN(set.ticket_revenue)),
+        kpiTile('Cover', fmtMXN(set.cover_revenue)),
+        kpiTile('Otros costos', fmtMXN(set.other_costs)),
+        kpiTile('Notas', set.notes ? (set.notes.length > 20 ? set.notes.slice(0, 20) + '…' : set.notes) : '—'),
+      ].join('');
+
+      const raw = (ev.raw_reports || []);
+      document.getElementById('raw-list').textContent = raw.length
+        ? raw.map(r => `${r.report_type}`).join(' · ')
+        : 'Sin reportes raw';
+    }
+
+    function kpiTile(label, value, hint = '') {
+      return `<div class="kpi-tile"><div class="k">${label}</div><div class="v">${value}</div>${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+    }
+
+    // ─── scrape ────────────────────────────────────────────
+    async function scrape() {
+      const btn = document.getElementById('btn-scrape');
+      btn.disabled = true;
+      btn.textContent = 'Scrapeando…';
+      try {
+        const body = state.currentDate ? { event_date: state.currentDate } : {};
+        const res = await API.post(`/api/ss/${ORG_SLUG}/scrape`, body);
+        showToast(`Scrape ok: ${res.event_date || res.ss_event_id || ''}`, 'success');
+        if (state.view === 'detail' && state.currentDate) await loadEvent(state.currentDate);
+        else await loadList();
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Scrape ahora';
+      }
+    }
+
+    // ─── settle modal ──────────────────────────────────────
+    function openSettleModal() {
+      const ev = state.currentEvent;
+      if (!ev) return;
+      const set = (ev.ss_settlement && (Array.isArray(ev.ss_settlement) ? ev.ss_settlement[0] : ev.ss_settlement)) || {};
+      const form = document.getElementById('settle-form');
+      ['door_count','ticket_count','ticket_revenue','cover_revenue','nomina','cash_tips','cogs_override','other_costs'].forEach(k => {
+        form.elements[k].value = (set[k] == null ? '' : set[k]);
+      });
+      form.elements.notes.value = set.notes || '';
+      document.getElementById('settle-sub').textContent = `${fmtDate(ev.event_date)}`;
+      document.getElementById('settle-modal').classList.add('open');
+    }
+    function closeSettleModal() {
+      document.getElementById('settle-modal').classList.remove('open');
+    }
+    async function saveSettlement(e) {
+      e.preventDefault();
+      const form = document.getElementById('settle-form');
+      const payload = {};
+      ['door_count','ticket_count','ticket_revenue','cover_revenue','nomina','cash_tips','cogs_override','other_costs'].forEach(k => {
+        const v = form.elements[k].value;
+        payload[k] = v === '' ? null : Number(v);
+      });
+      payload.notes = form.elements.notes.value || null;
+
+      const saveBtn = document.getElementById('settle-save');
+      saveBtn.disabled = true;
+      try {
+        await API.put(`/api/ss/${ORG_SLUG}/events/${state.currentDate}/settlement`, payload);
+        showToast('Settlement guardado', 'success');
+        closeSettleModal();
+        await loadEvent(state.currentDate);
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    // ─── wire up ───────────────────────────────────────────
+    document.getElementById('btn-scrape').addEventListener('click', scrape);
+    document.getElementById('back-to-list').addEventListener('click', goList);
+    document.getElementById('btn-settle').addEventListener('click', openSettleModal);
+    document.getElementById('settle-cancel').addEventListener('click', closeSettleModal);
+    document.getElementById('settle-form').addEventListener('submit', saveSettlement);
+    document.getElementById('settle-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'settle-modal') closeSettleModal();
+    });
+    document.getElementById('nav-signout').addEventListener('click', () => Auth.signOut());
+
+    // ─── boot ──────────────────────────────────────────────
+    (async () => {
+      await Auth.requireSession();
+      const user = await Auth.getUser();
+      document.getElementById('nav-user-email').textContent = user.email || '';
+      render();
+    })();
+  </script>
+</body>
+</html>
