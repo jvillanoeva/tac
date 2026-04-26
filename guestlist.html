@@ -496,6 +496,13 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           </div>
         </div>
 
+        <!-- Default tier picker — applied to any row missing a tier value -->
+        <div class="form-group" id="excel-default-tier-group" style="display:none;">
+          <label class="form-label">Categoría por defecto <span class="text-xs text-secondary">(para invitados sin categoría)</span></label>
+          <div class="industry-chips" id="excel-default-tier-chips"></div>
+          <input type="hidden" id="excel-default-tier">
+        </div>
+
         <!-- Preview table -->
         <div style="max-height:200px;overflow:auto;border:1px solid var(--border);margin-bottom:16px;">
           <table style="font-size:12px;">
@@ -1321,6 +1328,9 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           autoMap('map-notes', ['notas', 'notes', 'nota', 'comentario', 'comments']);
           autoMap('map-plus', ['plus', 'extras', '+n', 'acompañantes', 'guests']);
 
+          // Default-tier chips (for rows with no tier value or no tier column mapped)
+          buildExcelDefaultTierChips();
+
           // Preview first 5 rows
           const headRow = document.getElementById('excel-preview-head');
           headRow.innerHTML = excelHeaders.map(h => `<th style="font-size:11px;white-space:nowrap;">${esc(h)}</th>`).join('');
@@ -1347,6 +1357,32 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       }
     }
 
+    function buildExcelDefaultTierChips() {
+      const row = document.getElementById('excel-default-tier-chips');
+      const group = document.getElementById('excel-default-tier-group');
+      const hidden = document.getElementById('excel-default-tier');
+      if (!row || !group || !hidden) return;
+
+      hidden.value = '';
+      const tiers = (eventTiers && eventTiers.length) ? eventTiers.map(t => t.label) : ['GA'];
+      row.innerHTML = tiers.map(label =>
+        `<button type="button" class="industry-chip" data-value="${esc(label)}" onclick="selectExcelDefaultTier(this)">${esc(label)}</button>`
+      ).join('');
+      group.style.display = '';
+
+      // Auto-pick when there's only one possible tier (e.g. GA fallback)
+      if (tiers.length === 1) {
+        const btn = row.querySelector('.industry-chip');
+        if (btn) selectExcelDefaultTier(btn);
+      }
+    }
+
+    function selectExcelDefaultTier(btn) {
+      document.querySelectorAll('#excel-default-tier-chips .industry-chip').forEach(c => c.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('excel-default-tier').value = btn.dataset.value;
+    }
+
     async function importExcel() {
       const nameCol = document.getElementById('map-name').value;
       if (!nameCol) { alert('Mapea la columna de Nombre'); return; }
@@ -1356,6 +1392,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       const phoneCol = document.getElementById('map-phone').value;
       const notesCol = document.getElementById('map-notes').value;
       const plusCol = document.getElementById('map-plus').value;
+      const defaultTier = document.getElementById('excel-default-tier').value || '';
       const sendEmails = document.getElementById('excel-send-email').checked;
 
       const btn = document.getElementById('excel-btn');
@@ -1364,17 +1401,29 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
 
       // Build guest list from Excel data
       const guests = [];
+      let missingTierCount = 0;
       for (const row of excelData) {
         const name = String(row[nameCol] || '').trim();
         if (!name) continue;
 
         const email = emailCol ? String(row[emailCol] || '').trim() || null : null;
-        const tier = tierCol ? String(row[tierCol] || '').trim() || null : null;
+        let tier = tierCol ? String(row[tierCol] || '').trim() || null : null;
+        if (!tier) {
+          if (defaultTier) tier = defaultTier;
+          else missingTierCount++;
+        }
         const phone = phoneCol ? String(row[phoneCol] || '').trim() || null : null;
         const notes = notesCol ? String(row[notesCol] || '').trim() || null : null;
         const plusN = plusCol ? parseInt(row[plusCol]) || 0 : 0;
 
         guests.push({ name, email, tier, phone, notes, plus: plusN });
+      }
+
+      if (missingTierCount > 0) {
+        alert(`${missingTierCount} invitado${missingTierCount === 1 ? '' : 's'} sin categoría. Selecciona una "Categoría por defecto" antes de importar.`);
+        btn.disabled = false;
+        btn.textContent = 'Importar';
+        return;
       }
 
       if (guests.length === 0) {
