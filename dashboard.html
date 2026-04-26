@@ -536,7 +536,7 @@
     });
 
     async function deleteEvent(slug, name) {
-      if (!confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) return;
+      if (!confirm(`¿Eliminar "${name}"?\n\nSe borrarán también invitados, staff y enlaces de invitación.\nNo se puede deshacer.`)) return;
       try {
         await API.del(`/api/events/${slug}`);
         await loadDashboard();
