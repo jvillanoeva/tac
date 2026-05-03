@@ -628,12 +628,18 @@ Entry Details:
       // Always load orgs (for both create and edit)
       await loadMyOrgs();
 
-      // Pre-select org if creating from an org context (?org=slug)
-      const orgSlugFromUrl = params.get('org');
-      if (orgSlugFromUrl && !editSlug) {
-        const o = myOrgs.find(o => o.slug === orgSlugFromUrl);
-        if (o) {
-          document.getElementById('organization_id').value = o.id;
+      // Pre-select org when creating new (not editing):
+      // 1) explicit ?org=<slug> wins
+      // 2) otherwise default to the user's first org so events don't accidentally
+      //    end up unattached when the creator forgets to pick (e.g. Axel forgot
+      //    and the org owner couldn't edit it)
+      if (!editSlug) {
+        const orgSlugFromUrl = params.get('org');
+        let target = null;
+        if (orgSlugFromUrl) target = myOrgs.find(o => o.slug === orgSlugFromUrl);
+        if (!target && myOrgs.length > 0) target = myOrgs[0];
+        if (target) {
+          document.getElementById('organization_id').value = target.id;
           renderOrgChips();
           onOrgChange();
         }
