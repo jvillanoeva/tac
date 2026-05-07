@@ -1,4 +1,9 @@
 {
+  "redirects": [
+    { "source": "/amental", "destination": "/acto", "statusCode": 301 },
+    { "source": "/amental/:path*", "destination": "/acto/:path*", "statusCode": 301 },
+    { "source": "/e/dixon-jimmy-jules", "destination": "/e/jimi-jules-dixon", "statusCode": 301 }
+  ],
   "rewrites": [
     { "source": "/", "has": [{ "type": "host", "value": "sundaysunday.colectivo.live" }], "destination": "/sundaysunday.html" },
     { "source": "/e/:slug", "destination": "/evento.html?e=:slug" },
