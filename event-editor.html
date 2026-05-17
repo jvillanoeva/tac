@@ -201,8 +201,9 @@
             <div class="form-group">
               <label class="form-label">Fecha</label>
               <input type="date" class="form-input" id="date_picker">
-              <input type="hidden" id="date_label">
-              <div class="text-xs text-muted mt-8" id="date-display"></div>
+              <input type="hidden" id="date">
+              <input type="text" class="form-input mt-8" id="date_label" placeholder="ej. Domingo 10 de mayo de 2026">
+              <div class="text-xs text-muted mt-4">Editable — se usa en emails y página pública.</div>
             </div>
             <div class="form-group">
               <label class="form-label">Hora</label>
@@ -377,7 +378,7 @@ Entry Details:
     const editSlug = params.get('slug');
     let isEditing = false;
 
-    const FIELDS = ['name', 'slug', 'subtitle', 'date_label', 'time_label', 'venue', 'city',
+    const FIELDS = ['name', 'slug', 'subtitle', 'date', 'date_label', 'time_label', 'venue', 'city',
       'description', 'dos', 'donts', 'restrictions', 'contact_email', 'contact_phone',
       'contact_instagram', 'address', 'map_url', 'banner_url', 'layout_url', 'logo_url', 'brand_color',
       'email_instructions_es', 'email_instructions_en', 'organization_id'];
@@ -543,10 +544,14 @@ Entry Details:
     }
 
     document.getElementById('date_picker').addEventListener('input', (e) => {
-      if (e.target.value) {
-        const formatted = formatDateES(e.target.value);
-        document.getElementById('date_label').value = formatted;
-        document.getElementById('date-display').textContent = formatted;
+      const val = e.target.value;
+      if (val) {
+        // Auto-fill the Spanish label (operator can override it by typing in the field)
+        document.getElementById('date_label').value = formatDateES(val);
+        // Store as midnight, America/Mexico_City (UTC-6, no DST since 2023)
+        document.getElementById('date').value = `${val}T00:00:00-06:00`;
+      } else {
+        document.getElementById('date').value = '';
       }
     });
 
@@ -666,10 +671,18 @@ Entry Details:
         // Populate tiers
         loadTiers(event.tiers);
 
-        // Populate date/time pickers from stored labels
-        if (event.date_label) {
-          document.getElementById('date-display').textContent = event.date_label;
-          document.getElementById('date_label').value = event.date_label;
+        // Populate date picker from structured field; label loaded separately below
+        if (event.date) {
+          // Strip to YYYY-MM-DD. For events stored at 04:00 UTC (10 PM Mexico City),
+          // substring(0,10) gives the UTC date which is one day ahead — that's a known
+          // quirk of pre-fix data; the editable date_label remains ground truth for display.
+          document.getElementById('date_picker').value = event.date.substring(0, 10);
+          document.getElementById('date').value = event.date;
+        }
+        // date_label is in FIELDS so the loop above already loaded it; this handles
+        // the edge case where date exists but date_label is null.
+        if (!event.date_label && event.date) {
+          document.getElementById('date_label').value = formatDateES(event.date.substring(0, 10));
         }
         if (event.time_label) {
           const timeVal = event.time_label.replace(' hrs', '');
@@ -719,6 +732,19 @@ Entry Details:
       const name = document.getElementById('name').value.trim();
       if (!name) {
         showAlert('El nombre del evento es obligatorio');
+        return;
+      }
+
+      // Sync: if picker has a value but the hidden date field wasn't populated
+      // (e.g. user typed date_label manually without touching the picker, or the
+      // browser filled the picker without firing the input event), derive it now.
+      const pickerVal = document.getElementById('date_picker').value;
+      if (pickerVal && !document.getElementById('date').value) {
+        document.getElementById('date').value = `${pickerVal}T00:00:00-06:00`;
+      }
+
+      if (!document.getElementById('date').value) {
+        showAlert('La fecha del evento es obligatoria');
         return;
       }
 
