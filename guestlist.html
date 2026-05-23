@@ -419,6 +419,11 @@
           <label class="form-label">Notas</label>
           <input type="text" class="form-input" id="add-notes" placeholder="Notas internas">
         </div>
+        <div class="form-group">
+          <label class="form-label">UID tarjeta NFC <span class="text-xs text-secondary">(opcional)</span></label>
+          <input type="text" class="form-input" id="add-nfc-id" placeholder="Ej: 04:A2:1B:C3:D4" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <span class="text-xs text-secondary">Se normaliza al guardar (mayúsculas, sin separadores). Único por evento.</span>
+        </div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
           <input type="checkbox" id="add-send-email" checked>
           <span class="text-sm">Enviar QR por email</span>
@@ -896,11 +901,12 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       const tier = document.getElementById('add-tier').value || null;
       const requestedBy = document.getElementById('add-requested-by').value.trim() || null;
       const industry = document.getElementById('add-industry').value.trim() || null;
+      const nfcId = document.getElementById('add-nfc-id').value.trim() || null;
       const sendEmail = document.getElementById('add-send-email').checked;
       const plusN = parseInt(document.getElementById('add-plus').value) || 0;
 
       try {
-        const payload = { name, email, phone, notes, tier, requested_by: requestedBy, industry, send_email: sendEmail };
+        const payload = { name, email, phone, notes, tier, requested_by: requestedBy, industry, nfc_id: nfcId, send_email: sendEmail };
         if (plusN > 0) payload.plus = plusN;
         await API.post(`/api/events/${slug}/guests`, payload);
 
@@ -911,13 +917,21 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         document.getElementById('add-notes').value = '';
         document.getElementById('add-tier').value = '';
         document.getElementById('add-requested-by').value = '';
+        document.getElementById('add-nfc-id').value = '';
         document.getElementById('add-plus').value = '0';
         resetIndustryField();
 
         closeModal('add-modal');
         await loadGuests();
       } catch (err) {
-        alert(err.message);
+        // Friendly message for the per-event NFC UID uniqueness conflict (409).
+        // The API client surfaces the server's error text; match on it (and the
+        // word "tarjeta") so a duplicate card reads clearly instead of a generic
+        // failure. Field stays editable so the operator can correct the UID.
+        const msg = /tarjeta/i.test(err.message || '')
+          ? 'Esa tarjeta NFC ya está asignada a otro invitado de este evento.'
+          : err.message;
+        alert(msg);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Agregar';
