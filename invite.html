@@ -280,6 +280,7 @@
           <form class="invite-form" onsubmit="addGuest(event)">
             <input type="text" id="guest-name" placeholder="Nombre completo" required autocomplete="off" oninput="updatePlusLabel()">
             <input type="email" id="guest-email" placeholder="Email (para recibir QR)" autocomplete="off">
+            <input type="text" id="guest-nfc-id" placeholder="UID tarjeta NFC (opcional)" autocomplete="off" autocapitalize="characters" spellcheck="false">
             <div style="display:flex;gap:12px;align-items:center;">
               <label style="color:rgba(255,255,255,0.4);font-size:12px;white-space:nowrap;letter-spacing:1px;">QRs</label>
               <input type="number" id="guest-plus" min="1" max="${remaining}" value="1" style="background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.15);color:#fff;padding:14px 0;font-family:inherit;font-size:14px;outline:none;width:60px;text-align:center;border-radius:0;" oninput="updatePlusLabel()">
@@ -331,10 +332,12 @@
       const btn = document.getElementById('submit-btn');
       const nameInput = document.getElementById('guest-name');
       const emailInput = document.getElementById('guest-email');
+      const nfcInput = document.getElementById('guest-nfc-id');
       const plusInput = document.getElementById('guest-plus');
 
       const name = nameInput.value.trim();
       const email = emailInput.value.trim();
+      const nfcId = (nfcInput?.value || '').trim();
       const totalQrs = parseInt(plusInput?.value) || 1;
       const plusN = totalQrs - 1;
 
@@ -347,7 +350,7 @@
         const res = await fetch(`${CONFIG.API_URL}/api/invite/public/${token}/guest`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email: email || null, plus: plusN }),
+          body: JSON.stringify({ name, email: email || null, plus: plusN, nfc_id: nfcId || null }),
         });
 
         const data = await res.json();
@@ -357,7 +360,11 @@
         linkData.used_count += totalQrs;
         render();
       } catch (err) {
-        alert(err.message);
+        // Friendly override for the per-event NFC UID uniqueness conflict (409).
+        const msg = /tarjeta/i.test(err.message || '')
+          ? 'Esa tarjeta NFC ya está asignada a otro invitado de este evento.'
+          : err.message;
+        alert(msg);
         btn.disabled = false;
         updatePlusLabel();
       }
