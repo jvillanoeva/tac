@@ -16,9 +16,20 @@
     .kpi:last-child { border-right: 0; }
     .kpi .n { font-size: 1.35rem; font-weight: 700; }
     .kpi .l { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-top: 2px; }
-    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-    .toolbar input { flex: 1; min-width: 200px; padding: 8px 11px; font-size: 13px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar input[type=search], .toolbar input:not([type]) { flex: 1; min-width: 180px; padding: 8px 11px; font-size: 13px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); }
     .toolbar .right { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+    .btn-sm { font-size: 12px; padding: 7px 12px; }
+    #send-result { font-size: 12px; color: var(--text-secondary); margin: 6px 0 12px; white-space: pre-wrap; }
+
+    /* Add-table form */
+    .addform { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 14px; display: none; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+    .addform.open { display: flex; }
+    .field { display: flex; flex-direction: column; gap: 3px; }
+    .field label { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
+    .field input, .field select { padding: 7px 9px; font-size: 13px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); }
+    .field input.sm { width: 80px; }
+
     .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
     .tbl th { text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; padding: 7px 10px; border-bottom: 1px solid var(--border); }
     .tbl th.r, .tbl td.r { text-align: right; }
@@ -26,25 +37,39 @@
     .trow { cursor: pointer; }
     .trow:hover { background: var(--bg-card); }
     .code { font-weight: 700; }
-    .kind { color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
     .mgr { color: var(--text-secondary); }
     .mgr.none { color: var(--text-muted); font-style: italic; }
     .nomail { color: var(--warning); font-size: 11px; }
+    .inactive td { opacity: .5; }
     .minibar { display: inline-block; width: 60px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
     .minibar > i { display: block; height: 100%; background: var(--text-muted); }
     .badge { display: inline-block; min-width: 26px; text-align: center; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
     .b-gate { background: color-mix(in srgb, var(--success) 22%, transparent); color: var(--success); }
     .b-table { background: color-mix(in srgb, #3b82f6 24%, transparent); color: #60a5fa; }
     .b-zero { color: var(--text-muted); }
-    .guests { background: var(--bg-card); }
-    .guests td { padding: 0; }
+
+    /* Modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: flex-start; justify-content: center; padding: 28px 16px; z-index: 100; overflow: auto; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--bg-card, #111); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 600px; max-width: 100%; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+    .modal-head .mt { font-size: 1.2rem; font-weight: 800; }
+    .modal-head .x { cursor: pointer; color: var(--text-muted); font-size: 20px; background: none; border: 0; }
+    .modal-body { padding: 16px 18px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+    .lk { display: flex; gap: 8px; align-items: center; margin: 6px 0 14px; }
+    .lk input { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-secondary); }
+    .mstats { display: flex; gap: 18px; margin: 4px 0 14px; font-size: 13px; color: var(--text-secondary); }
+    .mstats b { color: var(--text-primary); }
     .glist { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .glist td { padding: 4px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    .glist td.n { color: var(--text-muted); width: 30px; }
-    .dot { display:inline-block; width: 22px; text-align:center; }
+    .glist th { text-align: left; color: var(--text-muted); font-size: 10px; text-transform: uppercase; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+    .glist td { padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .glist td.n { color: var(--text-muted); }
+    .dot { display:inline-block; min-width: 22px; text-align:center; font-weight: 700; }
     .dot.on-g { color: var(--success); } .dot.on-t { color: #60a5fa; } .dot.off { color: var(--text-muted); }
-    .btn-sm { font-size: 12px; padding: 7px 12px; }
-    #send-result { font-size: 12px; color: var(--text-secondary); margin-top: 8px; white-space: pre-wrap; }
+    .modal-foot { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .modal-foot .danger { margin-left: auto; }
   </style>
 </head>
 <body>
@@ -58,14 +83,26 @@
     <div class="kpis" id="kpis"></div>
 
     <div class="toolbar">
-      <input id="q" placeholder="Buscar mesa o titular…">
+      <input type="search" id="q" placeholder="Buscar mesa o titular…">
       <label style="font-size:12px;color:var(--text-secondary);display:flex;gap:5px;align-items:center;">
         <input type="checkbox" id="incomplete"> sólo incompletas
       </label>
+      <button class="btn btn-sm" onclick="toggleAdd()">＋ Agregar mesa</button>
       <button class="btn btn-secondary btn-sm" onclick="load()">Actualizar</button>
-      <button class="btn btn-sm" id="send-btn" onclick="sendUndistributed()">Enviar pases faltantes a titulares</button>
+      <button class="btn btn-secondary btn-sm" id="send-btn" onclick="sendUndistributed()">Enviar pases faltantes</button>
       <span class="right" id="count"></span>
     </div>
+
+    <div class="addform" id="addform">
+      <div class="field"><label>Etiqueta</label><input id="a-label" placeholder="Mesa 50 / Test"></div>
+      <div class="field"><label>Tipo</label><select id="a-kind"><option value="mesa">mesa</option><option value="palco">palco</option></select></div>
+      <div class="field" style="flex:1;min-width:140px;"><label>Titular</label><input id="a-name" placeholder="Nombre"></div>
+      <div class="field" style="flex:1;min-width:160px;"><label>Correo titular</label><input id="a-email" placeholder="correo@…"></div>
+      <div class="field"><label>Cupo</label><input id="a-quota" class="sm" type="number" value="10" min="1"></div>
+      <button class="btn btn-sm" onclick="createTable()">Crear</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleAdd()">Cancelar</button>
+    </div>
+
     <div id="send-result"></div>
 
     <table class="tbl">
@@ -75,6 +112,11 @@
       </tr></thead>
       <tbody id="tb"></tbody>
     </table>
+  </div>
+
+  <!-- Table modal -->
+  <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modal"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -91,7 +133,7 @@
     let tables = [];
     let query = '';
     let onlyIncomplete = false;
-    const expanded = new Set();
+    let modalId = null;
 
     async function init() {
       await Auth.requireSession();
@@ -104,7 +146,7 @@
         document.getElementById('event-name').textContent = 'Error: ' + e.message;
       }
       await load();
-      setInterval(load, 25000); // light auto-refresh
+      setInterval(() => { if (!modalId) load(); }, 25000); // pause refresh while modal open
     }
 
     async function load() {
@@ -118,6 +160,8 @@
       }
     }
 
+    function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
     function kpis() {
       const t = tables.length;
       const loaded = tables.reduce((a, x) => a + x.counts.loaded, 0);
@@ -127,7 +171,7 @@
       const noMail = tables.filter(x => !x.manager_email).length;
       document.getElementById('kpis').innerHTML = [
         [t, 'mesas'], [quota, 'cupo'], [loaded, 'cargados'],
-        [gate, 'puerta'], [tbl, 'mesa'], [noMail, 'sin correo titular'],
+        [gate, 'puerta'], [tbl, 'mesa'], [noMail, 'sin correo'],
       ].map(([n, l]) => `<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
     }
 
@@ -142,40 +186,133 @@
       });
     }
 
-    function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-
     function render() {
       kpis();
       const list = filtered();
       document.getElementById('count').textContent = `${list.length} / ${tables.length}`;
-      const rows = list.map(x => {
+      document.getElementById('tb').innerHTML = list.map(x => {
         const pct = x.max_guests ? Math.round(x.counts.loaded / x.max_guests * 100) : 0;
-        const gate = x.counts.gate ? `<span class="badge b-gate">${x.counts.gate}</span>` : `<span class="badge b-zero">0</span>`;
-        const tbl = x.counts.table ? `<span class="badge b-table">${x.counts.table}</span>` : `<span class="badge b-zero">0</span>`;
-        let html = `<tr class="trow" onclick="toggle('${x.id}')">
+        const gate = `<span class="badge ${x.counts.gate ? 'b-gate' : 'b-zero'}">${x.counts.gate}</span>`;
+        const tbl = `<span class="badge ${x.counts.table ? 'b-table' : 'b-zero'}">${x.counts.table}</span>`;
+        return `<tr class="trow ${x.active ? '' : 'inactive'}" onclick="openModal('${x.id}')">
           <td><span class="code">${esc(x.label)}</span></td>
-          <td>${x.manager_name ? `<span class="mgr">${esc(x.manager_name)}</span>` : '<span class="mgr none">sin titular</span>'}
-              ${x.manager_email ? '' : '<span class="nomail"> · sin correo</span>'}</td>
+          <td>${x.manager_name ? `<span class="mgr">${esc(x.manager_name)}</span>` : '<span class="mgr none">sin titular</span>'}${x.manager_email ? '' : '<span class="nomail"> · sin correo</span>'}</td>
           <td class="r"><span class="minibar"><i style="width:${pct}%"></i></span>${x.counts.loaded}/${x.max_guests}</td>
           <td class="r">${gate}</td>
           <td class="r">${tbl}</td>
         </tr>`;
-        if (expanded.has(x.id)) {
-          const grows = (x.guests || []).map((g, i) => `
-            <tr><td class="n">${i + 1}</td>
-                <td>${esc(g.name)}</td>
-                <td><span class="dot ${g.gate_scanned_at ? 'on-g' : 'off'}">${g.gate_scanned_at ? 'P' : '·'}</span>
-                    <span class="dot ${g.table_scanned_at ? 'on-t' : 'off'}">${g.table_scanned_at ? 'M' : '·'}</span></td>
-            </tr>`).join('') || `<tr><td colspan="3" style="color:var(--text-muted);padding:8px 10px;">Sin invitados cargados.</td></tr>`;
-          html += `<tr class="guests"><td colspan="5"><table class="glist"><tbody>${grows}</tbody></table></td></tr>`;
-        }
-        return html;
-      }).join('');
-      document.getElementById('tb').innerHTML = rows || `<tr><td colspan="5" style="padding:20px;color:var(--text-muted);">Sin resultados.</td></tr>`;
+      }).join('') || `<tr><td colspan="5" style="padding:20px;color:var(--text-muted);">Sin resultados.</td></tr>`;
     }
 
-    function toggle(id) { expanded.has(id) ? expanded.delete(id) : expanded.add(id); render(); }
+    // ── Modal ────────────────────────────────────────────────────────────────
+    function openModal(id) {
+      const x = tables.find(t => t.id === id);
+      if (!x) return;
+      modalId = id;
+      const link = `${location.origin}/invite/${x.token}`;
+      const guests = (x.guests || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+      const grows = guests.map((g, i) => `
+        <tr><td class="n">${i + 1}</td>
+            <td>${esc(g.name)}</td>
+            <td>${g.email ? esc(g.email) : '<span style="color:var(--text-muted)">—</span>'}</td>
+            <td><span class="dot ${g.gate_scanned_at ? 'on-g' : 'off'}">${g.gate_scanned_at ? 'P' : '·'}</span>
+                <span class="dot ${g.table_scanned_at ? 'on-t' : 'off'}">${g.table_scanned_at ? 'M' : '·'}</span></td>
+        </tr>`).join('') || `<tr><td colspan="4" style="color:var(--text-muted);padding:8px;">Sin invitados / QRs cargados.</td></tr>`;
 
+      document.getElementById('modal').innerHTML = `
+        <div class="modal-head">
+          <div class="mt">${esc(x.label)} <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">${esc(x.tier || '')}</span></div>
+          <button class="x" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <label style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Magic link (titular)</label>
+          <div class="lk">
+            <input id="m-link" readonly value="${esc(link)}">
+            <button class="btn btn-sm" onclick="copyLink()">Copiar</button>
+            <a class="btn btn-secondary btn-sm" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>
+          </div>
+
+          <div class="grid2">
+            <div class="field"><label>Etiqueta</label><input id="m-label" value="${esc(x.label)}"></div>
+            <div class="field"><label>Cupo (max QRs)</label><input id="m-quota" type="number" min="0" value="${x.max_guests}"></div>
+            <div class="field"><label>Titular</label><input id="m-name" value="${esc(x.manager_name || '')}"></div>
+            <div class="field"><label>Correo titular</label><input id="m-email" value="${esc(x.manager_email || '')}" placeholder="correo@…"></div>
+          </div>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--text-secondary);margin:12px 0 4px;">
+            <input type="checkbox" id="m-active" ${x.active ? 'checked' : ''}> Magic link activo
+          </label>
+
+          <div class="mstats">
+            <span>cargados <b>${x.counts.loaded}/${x.max_guests}</b></span>
+            <span>puerta <b>${x.counts.gate}</b></span>
+            <span>mesa <b>${x.counts.table}</b></span>
+          </div>
+
+          <table class="glist"><thead><tr><th>#</th><th>Invitado</th><th>Correo</th><th>QR (P/M)</th></tr></thead>
+            <tbody>${grows}</tbody></table>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-sm" onclick="saveTable('${x.id}')">Guardar cambios</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal()">Cerrar</button>
+          <button class="btn btn-secondary btn-sm danger" onclick="deleteTable('${x.id}','${esc(x.label)}')">Eliminar mesa</button>
+        </div>`;
+      document.getElementById('overlay').classList.add('open');
+    }
+
+    function closeModal() { modalId = null; document.getElementById('overlay').classList.remove('open'); }
+
+    function copyLink() {
+      const el = document.getElementById('m-link');
+      el.select(); navigator.clipboard?.writeText(el.value);
+    }
+
+    async function saveTable(id) {
+      const body = {
+        label: document.getElementById('m-label').value.trim(),
+        max_guests: parseInt(document.getElementById('m-quota').value) || 0,
+        manager_name: document.getElementById('m-name').value.trim(),
+        manager_email: document.getElementById('m-email').value.trim(),
+        active: document.getElementById('m-active').checked,
+      };
+      try {
+        await API.patch(`/api/events/${slug}/invite-links/${id}`, body);
+        await load();
+        openModal(id); // refresh with saved data
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function deleteTable(id, label) {
+      if (!confirm(`¿Eliminar "${label}"? Esto borra el magic link de la mesa.`)) return;
+      try {
+        await API.del(`/api/events/${slug}/invite-links/${id}`);
+        closeModal();
+        await load();
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // ── Add table ─────────────────────────────────────────────────────────────
+    function toggleAdd() { document.getElementById('addform').classList.toggle('open'); }
+
+    async function createTable() {
+      const label = document.getElementById('a-label').value.trim();
+      if (!label) { alert('Pon una etiqueta'); return; }
+      const body = {
+        label,
+        tier: document.getElementById('a-kind').value,
+        manager_name: document.getElementById('a-name').value.trim(),
+        manager_email: document.getElementById('a-email').value.trim(),
+        max_guests: parseInt(document.getElementById('a-quota').value) || 10,
+        auto_send_email: true,
+      };
+      try {
+        const created = await API.post(`/api/events/${slug}/invite-links`, body);
+        ['a-label', 'a-name', 'a-email'].forEach(i => document.getElementById(i).value = '');
+        await load();
+        if (created && created.id) openModal(created.id);
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // ── Fallback send ─────────────────────────────────────────────────────────
     async function sendUndistributed() {
       const noMail = tables.filter(x => !x.manager_email).length;
       const ready = tables.filter(x => x.manager_email && x.counts.loaded < x.max_guests).length;
@@ -191,12 +328,13 @@
       } catch (e) {
         document.getElementById('send-result').textContent = 'Error: ' + e.message;
       } finally {
-        btn.disabled = false; btn.textContent = 'Enviar pases faltantes a titulares';
+        btn.disabled = false; btn.textContent = 'Enviar pases faltantes';
       }
     }
 
     document.getElementById('q').addEventListener('input', e => { query = e.target.value; render(); });
     document.getElementById('incomplete').addEventListener('change', e => { onlyIncomplete = e.target.checked; render(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
     init();
   </script>
