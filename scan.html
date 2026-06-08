@@ -52,6 +52,39 @@
       letter-spacing: 1px;
     }
 
+    /* Stage toggle: main gate vs table door */
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      max-width: 360px;
+      margin: 0 auto 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .mode-toggle button {
+      flex: 1;
+      padding: 10px 8px;
+      background: transparent;
+      border: 0;
+      border-right: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+    .mode-toggle button:last-child { border-right: 0; }
+    .mode-toggle button.active { background: var(--text-primary, #fff); color: #000; }
+    .result-table {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .result-table .rt-label { font-size: 1.6rem; font-weight: 800; letter-spacing: 1px; }
+    .result-table .rt-manager { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
     /* Result overlay */
     .result-overlay {
       position: fixed;
@@ -98,6 +131,11 @@
       <p class="text-sm text-secondary" id="event-meta"></p>
     </div>
 
+    <div class="mode-toggle">
+      <button id="mode-gate" class="active" onclick="setMode('gate')">Puerta principal</button>
+      <button id="mode-table" onclick="setMode('table')">Puerta de mesa</button>
+    </div>
+
     <div class="scanner-stats">
       <div class="scanner-stat">
         <div class="value" id="stat-in">—</div>
@@ -125,6 +163,10 @@
       <div class="result-notes" id="result-notes"></div>
       <div class="result-message" id="result-message"></div>
       <div class="result-stats" id="result-stats"></div>
+      <div class="result-table" id="result-table" style="display:none;">
+        <div class="rt-label" id="rt-label"></div>
+        <div class="rt-manager" id="rt-manager"></div>
+      </div>
     </div>
   </div>
 
@@ -142,6 +184,13 @@
 
     let scanner = null;
     let isProcessing = false;
+    let mode = 'gate'; // 'gate' = main gate (Foro GNP) · 'table' = table door
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById('mode-gate').classList.toggle('active', m === 'gate');
+      document.getElementById('mode-table').classList.toggle('active', m === 'table');
+    }
 
     async function init() {
       await Auth.requireSession();
@@ -182,7 +231,7 @@
       isProcessing = true;
 
       try {
-        const result = await API.post('/api/checkin', { token: decodedText });
+        const result = await API.post('/api/checkin', { token: decodedText, stage: mode });
         showResult(result);
       } catch (err) {
         showResult({
@@ -230,6 +279,17 @@
         document.getElementById('result-notes').textContent = '';
         document.getElementById('result-message').textContent = result.message;
         document.getElementById('result-stats').textContent = '';
+      }
+
+      // Table-door context: show table + account manager when available.
+      const rt = document.getElementById('result-table');
+      if (result.table && result.table.label) {
+        document.getElementById('rt-label').textContent = result.table.label;
+        document.getElementById('rt-manager').textContent =
+          result.table.manager ? ('Titular: ' + result.table.manager) : '';
+        rt.style.display = 'block';
+      } else {
+        rt.style.display = 'none';
       }
 
       overlay.classList.add('active');
