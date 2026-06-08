@@ -70,6 +70,10 @@
     .dot.on-g { color: var(--success); } .dot.on-t { color: #60a5fa; } .dot.off { color: var(--text-muted); }
     .modal-foot { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--border); }
     .modal-foot .danger { margin-left: auto; }
+    .x-cancel { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 11px; padding: 2px 8px; border-radius: var(--radius); cursor: pointer; }
+    .x-cancel:hover { color: var(--danger); border-color: var(--danger); }
+    .tick { color: var(--success); font-weight: 700; }
+    .muted { color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -211,13 +215,20 @@
       modalId = id;
       const link = `${location.origin}/invite/${x.token}`;
       const guests = (x.guests || []).slice().sort((a, b) => a.name.localeCompare(b.name));
-      const grows = guests.map((g, i) => `
+      const grows = guests.map((g, i) => {
+        const recip = g.email
+          ? esc(g.email)
+          : (g.email_sent ? '<span class="muted">titular (lote)</span>' : '<span class="muted">no enviado</span>');
+        const sent = g.email_sent ? ' <span class="tick" title="QR enviado">✓</span>' : '';
+        return `
         <tr><td class="n">${i + 1}</td>
             <td>${esc(g.name)}</td>
-            <td>${g.email ? esc(g.email) : '<span style="color:var(--text-muted)">—</span>'}</td>
+            <td>${recip}${sent}</td>
             <td><span class="dot ${g.gate_scanned_at ? 'on-g' : 'off'}">${g.gate_scanned_at ? 'P' : '·'}</span>
                 <span class="dot ${g.table_scanned_at ? 'on-t' : 'off'}">${g.table_scanned_at ? 'M' : '·'}</span></td>
-        </tr>`).join('') || `<tr><td colspan="4" style="color:var(--text-muted);padding:8px;">Sin invitados / QRs cargados.</td></tr>`;
+            <td style="text-align:right;"><button class="x-cancel" title="Cancelar este QR" onclick="deleteGuest('${x.id}','${g.id}',event)">✕ cancelar</button></td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="5" style="color:var(--text-muted);padding:8px;">Sin invitados / QRs cargados.</td></tr>`;
 
       document.getElementById('modal').innerHTML = `
         <div class="modal-head">
@@ -248,7 +259,7 @@
             <span>mesa <b>${x.counts.table}</b></span>
           </div>
 
-          <table class="glist"><thead><tr><th>#</th><th>Invitado</th><th>Correo</th><th>QR (P/M)</th></tr></thead>
+          <table class="glist"><thead><tr><th>#</th><th>Invitado</th><th>Enviado a</th><th>QR</th><th></th></tr></thead>
             <tbody>${grows}</tbody></table>
         </div>
         <div class="modal-foot">
@@ -287,6 +298,16 @@
         await API.del(`/api/events/${slug}/invite-links/${id}`);
         closeModal();
         await load();
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function deleteGuest(linkId, guestId, ev) {
+      if (ev) ev.stopPropagation();
+      if (!confirm('¿Cancelar este QR? El acceso dejará de ser válido y se libera un lugar en el cupo.')) return;
+      try {
+        await API.del(`/api/events/${slug}/invite-links/${linkId}/guests/${guestId}`);
+        await load();
+        openModal(linkId); // refresh the modal with the QR removed
       } catch (e) { alert('Error: ' + e.message); }
     }
 
