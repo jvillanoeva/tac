@@ -16,7 +16,7 @@
     .hidden { display: none; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
     .card { border: 1px solid #23262c; border-radius: 8px; padding: 14px; background: #111317; text-align: center; }
-    .card canvas { width: 220px; height: 220px; background: #fff; padding: 8px; border-radius: 4px; }
+    .card img { width: 220px; height: 220px; background: #fff; padding: 8px; border-radius: 4px; image-rendering: pixelated; }
     .card .lbl { font-size: 13px; font-weight: 600; margin-top: 10px; }
     .card .meta { font-size: 11px; color: #8a8f96; margin-top: 4px; font-variant-numeric: tabular-nums; }
     /* scanner */
@@ -67,7 +67,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
     // A representative production-style token (signed JWT, ~210 chars).
@@ -89,18 +89,23 @@
       const grid = document.getElementById('grid');
       grid.innerHTML = VARIANTS.map(v => `
         <div class="card">
-          <canvas id="c-${v.id}"></canvas>
+          <img id="c-${v.id}" alt="">
           <div class="lbl">${v.label}</div>
           <div class="meta" id="m-${v.id}"></div>
         </div>`).join('');
       VARIANTS.forEach(v => {
-        const canvas = document.getElementById('c-' + v.id);
-        QRCode.toCanvas(canvas, v.text, { errorCorrectionLevel: v.ec, width: 220, margin: 1 }, () => {});
-        let ver = '?';
-        try { ver = QRCode.create(v.text, { errorCorrectionLevel: v.ec }).version; } catch (e) {}
-        const modules = ver !== '?' ? (21 + (ver - 1) * 4) : '?';
-        document.getElementById('m-' + v.id).textContent =
-          `${v.text.length} chars · EC ${v.ec} · versión ${ver} (${modules}×${modules})`;
+        try {
+          const qr = qrcode(0, v.ec);   // type 0 = auto-size, EC level L/M/Q/H
+          qr.addData(v.text);
+          qr.make();
+          const count = qr.getModuleCount();
+          const version = (count - 21) / 4 + 1;
+          document.getElementById('c-' + v.id).src = qr.createDataURL(8, 2);
+          document.getElementById('m-' + v.id).textContent =
+            `${v.text.length} chars · EC ${v.ec} · versión ${version} (${count}×${count})`;
+        } catch (e) {
+          document.getElementById('m-' + v.id).textContent = 'error: ' + e.message;
+        }
       });
     }
 
