@@ -225,11 +225,13 @@
       scanner.start(
         { facingMode: 'environment' },
         {
-          fps: 24,
-          qrbox: { width: 300, height: 300 },
+          fps: 10,
+          // Scan box sized to 75% of the smaller video dimension so the whole
+          // QR fits inside it (a fixed box can be smaller than the code when
+          // held close, leaving the decoder only a fragment).
+          qrbox: (vw, vh) => { const s = Math.floor(Math.min(vw, vh) * 0.75); return { width: s, height: s }; },
           aspectRatio: 1.0,
           disableFlip: true,
-          videoConstraints: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
         },
         onScanSuccess,
         () => {}
