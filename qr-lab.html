@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Lab — diagnóstico de escaneo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0b0c0e; color: #e6e8ea; font-family: ui-sans-serif, -apple-system, system-ui, sans-serif; padding: 14px; }
+    h1 { font-size: 1.1rem; margin-bottom: 4px; }
+    .sub { color: #8a8f96; font-size: 12px; margin-bottom: 14px; }
+    .tabs { display: flex; gap: 0; border: 1px solid #23262c; border-radius: 6px; overflow: hidden; max-width: 360px; margin-bottom: 16px; }
+    .tabs button { flex: 1; background: transparent; border: 0; color: #8a8f96; padding: 9px; font: inherit; font-size: 13px; cursor: pointer; border-right: 1px solid #23262c; }
+    .tabs button:last-child { border-right: 0; }
+    .tabs button.on { background: #4eb4f5; color: #04121d; font-weight: 700; }
+    .hidden { display: none; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .card { border: 1px solid #23262c; border-radius: 8px; padding: 14px; background: #111317; text-align: center; }
+    .card canvas { width: 220px; height: 220px; background: #fff; padding: 8px; border-radius: 4px; }
+    .card .lbl { font-size: 13px; font-weight: 600; margin-top: 10px; }
+    .card .meta { font-size: 11px; color: #8a8f96; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    /* scanner */
+    #reader { width: 100%; max-width: 360px; aspect-ratio: 1; margin: 0 auto 14px; border: 2px solid #23262c; border-radius: 8px; overflow: hidden; background: #000; }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; max-width: 460px; margin: 0 auto 14px; }
+    .controls label { font-size: 13px; color: #c2c7cd; display: flex; gap: 6px; align-items: center; }
+    .btn { background: #4eb4f5; color: #04121d; border: 0; border-radius: 6px; padding: 9px 14px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+    .btn.sec { background: transparent; border: 1px solid #2a2f39; color: #c2c7cd; }
+    .result { max-width: 460px; margin: 0 auto; }
+    .big { font-size: 2rem; font-weight: 800; color: #46c98b; text-align: center; font-variant-numeric: tabular-nums; }
+    .big.idle { color: #5a606a; font-size: 1.1rem; font-weight: 500; }
+    .log { margin-top: 12px; font-family: ui-monospace, monospace; font-size: 12px; }
+    .log .row { padding: 6px 8px; border-bottom: 1px solid #1a1d22; display: flex; justify-content: space-between; gap: 10px; }
+    .log .row .t { color: #46c98b; white-space: nowrap; }
+    .log .row .d { color: #8a8f96; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hint { max-width: 460px; margin: 14px auto 0; color: #8a8f96; font-size: 12px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <h1>QR Lab</h1>
+  <div class="sub">Compara formatos de QR y mide qué tan rápido escanea cada uno. Abre "Mostrar QRs" en una pantalla y "Escanear" en el teléfono de la puerta.</div>
+
+  <div class="tabs">
+    <button id="t-show" class="on" onclick="tab('show')">Mostrar QRs</button>
+    <button id="t-scan" onclick="tab('scan')">Escanear</button>
+  </div>
+
+  <!-- SHOW -->
+  <div id="show">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- SCAN -->
+  <div id="scan" class="hidden">
+    <div id="reader"></div>
+    <div class="controls">
+      <label><input type="checkbox" id="opt-native" checked> Detector nativo (turbo)</label>
+      <label>fps <input type="number" id="opt-fps" value="10" min="2" max="30" style="width:54px;background:#111317;border:1px solid #2a2f39;color:#e6e8ea;border-radius:4px;padding:4px;"></label>
+      <button class="btn" id="startBtn" onclick="startScan()">Iniciar cámara</button>
+      <button class="btn sec" onclick="resetTimer()">Reiniciar cronómetro</button>
+    </div>
+    <div class="result">
+      <div class="big idle" id="big">Apunta a un QR…</div>
+      <div class="log" id="log"></div>
+    </div>
+    <div class="hint">
+      El cronómetro mide el tiempo desde que inicia la cámara (o desde "Reiniciar") hasta el primer escaneo. Prueba cada QR de la pestaña "Mostrar QRs": si los cortos escanean y el largo no, el problema es la densidad del token. Si ninguno escanea, es la cámara/config. Sostén el QR a ~20 cm, dentro del recuadro.
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    // A representative production-style token (signed JWT, ~210 chars).
+    const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJnaWQiOiJjMDk0MTAxZC1iZTRkLTRhMmYtOWQ4YS0xMjM0NTY3ODkwYWIiLCJlaWQiOiI3ZjMyOTc4NC1hYjEyLTRjZGUtOGY5MC0wYWJjZGVmMTIzNDUiLCJpYXQiOjE3NDk0MDAwMDAsImV4cCI6MTc4MDkzNjAwMH0.Kq3mZ9xL7vR2pNwT8sYbHcJdFgQ1aEoUiZ4rXn6BkSomeExtraSignatureBytesHere';
+    const UUID = 'c094101d-be4d-4a2f-9d8a-1234567890ab';
+    const SHORT8 = 'A1B2C3D4';
+    const URLSHORT = 'https://tac.colectivo.live/q/A1B2C3D4';
+
+    const VARIANTS = [
+      { id: 'jwt-m',  label: 'Token producción (JWT)', text: JWT,      ec: 'M' },
+      { id: 'jwt-l',  label: 'Mismo token, EC bajo',   text: JWT,      ec: 'L' },
+      { id: 'uuid-l', label: 'UUID (36)',              text: UUID,     ec: 'L' },
+      { id: 'sh-l',   label: 'Código corto (8) EC L',  text: SHORT8,   ec: 'L' },
+      { id: 'sh-m',   label: 'Código corto (8) EC M',  text: SHORT8,   ec: 'M' },
+      { id: 'url-l',  label: 'URL + código corto',     text: URLSHORT, ec: 'L' },
+    ];
+
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = VARIANTS.map(v => `
+        <div class="card">
+          <canvas id="c-${v.id}"></canvas>
+          <div class="lbl">${v.label}</div>
+          <div class="meta" id="m-${v.id}"></div>
+        </div>`).join('');
+      VARIANTS.forEach(v => {
+        const canvas = document.getElementById('c-' + v.id);
+        QRCode.toCanvas(canvas, v.text, { errorCorrectionLevel: v.ec, width: 220, margin: 1 }, () => {});
+        let ver = '?';
+        try { ver = QRCode.create(v.text, { errorCorrectionLevel: v.ec }).version; } catch (e) {}
+        const modules = ver !== '?' ? (21 + (ver - 1) * 4) : '?';
+        document.getElementById('m-' + v.id).textContent =
+          `${v.text.length} chars · EC ${v.ec} · versión ${ver} (${modules}×${modules})`;
+      });
+    }
+
+    // ── scanner ──────────────────────────────────────────────────────────────
+    let scanner = null, scanStart = 0, lastText = '', lastAt = 0;
+
+    function tab(which) {
+      document.getElementById('show').classList.toggle('hidden', which !== 'show');
+      document.getElementById('scan').classList.toggle('hidden', which !== 'scan');
+      document.getElementById('t-show').classList.toggle('on', which === 'show');
+      document.getElementById('t-scan').classList.toggle('on', which === 'scan');
+      if (which !== 'scan' && scanner) { scanner.stop().catch(() => {}); scanner = null; document.getElementById('startBtn').textContent = 'Iniciar cámara'; }
+    }
+
+    function resetTimer() {
+      scanStart = performance.now();
+      document.getElementById('big').className = 'big idle';
+      document.getElementById('big').textContent = 'Cronómetro reiniciado…';
+    }
+
+    async function startScan() {
+      if (scanner) { await scanner.stop().catch(() => {}); scanner = null; document.getElementById('startBtn').textContent = 'Iniciar cámara'; return; }
+      const useNative = document.getElementById('opt-native').checked;
+      const fps = parseInt(document.getElementById('opt-fps').value) || 10;
+      const cfg = { experimentalFeatures: { useBarCodeDetectorIfSupported: useNative } };
+      if (typeof Html5QrcodeSupportedFormats !== 'undefined') cfg.formatsToSupport = [Html5QrcodeSupportedFormats.QR_CODE];
+      scanner = new Html5Qrcode('reader', cfg);
+      scanStart = performance.now();
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps, qrbox: (vw, vh) => { const s = Math.floor(Math.min(vw, vh) * 0.75); return { width: s, height: s }; }, aspectRatio: 1.0, disableFlip: true },
+          onDecode,
+          () => {}
+        );
+        document.getElementById('startBtn').textContent = 'Detener';
+      } catch (e) {
+        document.getElementById('big').className = 'big idle';
+        document.getElementById('big').textContent = 'Error cámara: ' + e;
+      }
+    }
+
+    function onDecode(text) {
+      const now = performance.now();
+      if (text === lastText && now - lastAt < 1500) return; // debounce repeats
+      lastText = text; lastAt = now;
+      const ms = Math.round(now - scanStart);
+      const big = document.getElementById('big');
+      big.className = 'big';
+      big.textContent = ms + ' ms';
+      const which = VARIANTS.find(v => v.text === text);
+      const label = which ? which.label : (text.length + ' chars');
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span class="t">${ms} ms</span><span class="d">${label} — ${text.slice(0, 28)}${text.length > 28 ? '…' : ''}</span>`;
+      document.getElementById('log').prepend(row);
+      scanStart = now; // time the next scan from here
+      if (navigator.vibrate) navigator.vibrate(60);
+    }
+
+    renderGrid();
+  </script>
+</body>
+</html>
