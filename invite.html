@@ -281,7 +281,8 @@
           <form class="invite-form" onsubmit="addGuest(event)">
             <input type="text" id="guest-name" placeholder="Nombre completo" required autocomplete="off" oninput="updatePlusLabel()">
             <input type="email" id="guest-email" placeholder="Email (para recibir QR)" autocomplete="off">
-            <input type="text" id="guest-nfc-id" placeholder="UID tarjeta NFC (opcional)" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <!-- NFC UID capture — hidden for now, kept for future use (backend still accepts nfc_id). -->
+            <input type="text" id="guest-nfc-id" placeholder="UID tarjeta NFC (opcional)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="display:none;">
             <div style="display:flex;gap:12px;align-items:center;">
               <label style="color:rgba(255,255,255,0.4);font-size:12px;white-space:nowrap;letter-spacing:1px;">QRs</label>
               <input type="number" id="guest-plus" min="1" max="${remaining}" value="1" style="background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.15);color:#fff;padding:14px 0;font-family:inherit;font-size:14px;outline:none;width:60px;text-align:center;border-radius:0;" oninput="updatePlusLabel()">

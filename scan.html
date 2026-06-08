@@ -211,10 +211,20 @@
     }
 
     function startScanner() {
-      scanner = new Html5Qrcode('scanner-container');
+      // Use the phone's native BarcodeDetector when available (orders of
+      // magnitude faster than the JS fallback, and copes far better with dense
+      // QRs), and only look for QR codes so no cycles are wasted on other
+      // formats. Works on already-issued QRs — no reissue needed.
+      const formats = (typeof Html5QrcodeSupportedFormats !== 'undefined')
+        ? [Html5QrcodeSupportedFormats.QR_CODE]
+        : undefined;
+      scanner = new Html5Qrcode('scanner-container', {
+        formatsToSupport: formats,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      });
       scanner.start(
-        { facingMode: 'environment' },
-        { fps: 15, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 },
+        { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        { fps: 24, qrbox: { width: 300, height: 300 }, aspectRatio: 1.0, disableFlip: true },
         onScanSuccess,
         () => {}
       ).catch(err => {
