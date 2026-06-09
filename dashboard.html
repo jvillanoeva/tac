@@ -533,6 +533,7 @@
         ? `<span class="badge badge-warning" style="margin-left:8px">${staffRole}</span>`
         : '';
 
+      const isAdmin = ADMIN_EMAILS.includes(currentEmail);
       const menu = !staffRole ? `
         <button class="event-menu-btn" onclick="event.preventDefault();event.stopPropagation();toggleMenu('${ev.slug}')">&#8942;</button>
         <div class="event-menu" id="menu-${ev.slug}">
@@ -540,7 +541,7 @@
           <a href="/guestlist.html?slug=${ev.slug}">Guestlist</a>
           <a href="/supervisor.html?slug=${ev.slug}">Supervisor</a>
           <a href="/scan.html?slug=${ev.slug}">Scanner</a>
-          <button class="danger" onclick="event.preventDefault();deleteEvent('${ev.slug}', '${ev.name.replace(/'/g, "\\'")}')">Eliminar</button>
+          ${isAdmin ? `<button class="danger" onclick="event.preventDefault();deleteEvent('${ev.slug}', '${ev.name.replace(/'/g, "\\'")}')">Eliminar</button>` : ''}
         </div>
       ` : '';
 
