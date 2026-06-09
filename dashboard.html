@@ -312,6 +312,7 @@
 
     async function loadDashboard() {
       const session = await Auth.requireSession();
+      currentEmail = (session.user.email || '').toLowerCase();
       document.getElementById('nav-email').textContent = session.user.email;
 
       try {
@@ -351,7 +352,35 @@
       }
     }
 
+    // Only these accounts may create organizations; everyone else sees just the
+    // projects they've been assigned to.
+    const ADMIN_EMAILS = ['jorge@ccoossmmoo.com', 'jvillanoeva@gmail.com'];
+    let currentEmail = '';
+
     function renderOrgListView({ orgs, eventsByOrgId, standalone, staffed }) {
+      const isAdmin = ADMIN_EMAILS.includes(currentEmail);
+
+      // Non-admins (clients) skip the org layer entirely — show the projects
+      // (events) they've been assigned to, directly.
+      if (!isAdmin) {
+        const myEvents = [];
+        eventsByOrgId.forEach(list => myEvents.push(...list));
+        standalone.forEach(e => myEvents.push(e));
+        staffed.forEach(e => myEvents.push(e));
+        const cards = myEvents
+          .map(ev => renderEventCard(ev, ev.staff_role || null, ev.organizations && ev.organizations.slug))
+          .join('');
+        document.getElementById('page-body').innerHTML = `
+          <div class="page-header"><h1 class="hero" style="font-size:28px;color:#ffffff">Proyectos</h1></div>
+          ${myEvents.length === 0 ? `
+            <div class="empty-state">
+              <h3>Sin proyectos</h3>
+              <p class="text-secondary">Aún no tienes proyectos asignados. Pide acceso al organizador.</p>
+            </div>
+          ` : `<div class="events-list">${cards}</div>`}`;
+        return;
+      }
+
       const orgCards = orgs.map(o => {
         const count = (eventsByOrgId.get(o.id) || []).length;
         return `
@@ -390,14 +419,19 @@
 
       const html = `
         <div class="page-header">
-          <h1 class="hero" style="font-size:28px;color:#ffffff">Orgs</h1>
-          <a href="/org-editor.html" class="btn btn-sm hero" style="font-size:12px;">+ Nueva</a>
+          <h1 class="hero" style="font-size:28px;color:#ffffff">Proyectos</h1>
+          ${isAdmin ? `<a href="/org-editor.html" class="btn btn-sm hero" style="font-size:12px;">+ Nueva</a>` : ''}
         </div>
         ${orgs.length === 0 && standalone.length === 0 && staffed.length === 0 ? `
           <div class="empty-state">
-            <h3>Bienvenido</h3>
-            <p class="text-secondary">Crea una organización para empezar.</p>
-            <a href="/org-editor.html" class="btn btn-primary mt-24">+ Nueva organización</a>
+            ${isAdmin ? `
+              <h3>Bienvenido</h3>
+              <p class="text-secondary">Crea una organización para empezar.</p>
+              <a href="/org-editor.html" class="btn btn-primary mt-24">+ Nueva organización</a>
+            ` : `
+              <h3>Sin proyectos</h3>
+              <p class="text-secondary">Aún no tienes proyectos asignados. Pide acceso al organizador.</p>
+            `}
           </div>
         ` : `
           <div class="orgs-grid">
