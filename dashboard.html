@@ -469,7 +469,7 @@
           </div>
         ` : `
           <div class="events-list">
-            ${events.map(ev => renderEventCard(ev, filter === '__staff' ? ev.staff_role : null)).join('')}
+            ${events.map(ev => renderEventCard(ev, filter === '__staff' ? ev.staff_role : null, orgSlug)).join('')}
           </div>
         `}
       `;
@@ -482,7 +482,11 @@
       return d.innerHTML;
     }
 
-    function renderEventCard(ev, staffRole) {
+    function renderEventCard(ev, staffRole, orgSlug) {
+      // Lost Nights operates from the supervisor (tables) view; other orgs keep the guestlist.
+      const primaryHref = orgSlug === 'lost-nights'
+        ? `/supervisor.html?slug=${ev.slug}`
+        : `/guestlist.html?slug=${ev.slug}`;
       const thumb = ev.banner_url
         ? `<img src="${ev.banner_url}" class="event-thumb" alt="">`
         : `<div class="event-thumb"></div>`;
@@ -508,7 +512,7 @@
 
       return `
         <div class="event-card">
-          <a href="/guestlist.html?slug=${ev.slug}" class="event-card-link">
+          <a href="${primaryHref}" class="event-card-link">
             ${thumb}
             <div class="event-info">
               <div class="event-name hero">${ev.name}</div>
