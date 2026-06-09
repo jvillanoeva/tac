@@ -500,6 +500,7 @@
         <div class="event-menu" id="menu-${ev.slug}">
           <a href="/event-editor.html?slug=${ev.slug}">Editar</a>
           <a href="/guestlist.html?slug=${ev.slug}">Guestlist</a>
+          <a href="/supervisor.html?slug=${ev.slug}">Supervisor</a>
           <a href="/scan.html?slug=${ev.slug}">Scanner</a>
           <button class="danger" onclick="event.preventDefault();deleteEvent('${ev.slug}', '${ev.name.replace(/'/g, "\\'")}')">Eliminar</button>
         </div>

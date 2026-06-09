@@ -247,6 +247,7 @@
     </div>
     <div class="nav-links">
       <a href="/dashboard.html">← eventos</a>
+      <a href="#" id="supervisor-link" class="hidden">supervisor</a>
       <a href="#" id="scan-link" class="hidden">scanner</a>
       <a href="#" id="edit-link" class="hidden" style="display:none">editar</a>
       <a href="#" onclick="Auth.signOut()">salir</a>
@@ -612,6 +613,10 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         }
 
         // Nav links
+        const supLink = document.getElementById('supervisor-link');
+        supLink.href = `/supervisor.html?slug=${slug}`;
+        supLink.classList.remove('hidden');
+
         const scanLink = document.getElementById('scan-link');
         scanLink.href = `/scan.html?slug=${slug}`;
         scanLink.classList.remove('hidden');
