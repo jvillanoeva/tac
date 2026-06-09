@@ -133,6 +133,16 @@
         </button>
       </form>
 
+      <!-- Set New Password (password recovery) -->
+      <form id="recovery-form" class="hidden" onsubmit="handleSetPassword(event)">
+        <p class="text-sm text-secondary" style="margin-bottom:16px;">Crea una nueva contraseña para tu cuenta.</p>
+        <div class="form-group">
+          <label class="form-label">Nueva contraseña</label>
+          <input type="password" class="form-input" id="recovery-password" required minlength="6" placeholder="Mínimo 6 caracteres">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%" id="recovery-btn">Guardar contraseña</button>
+      </form>
+
       <div class="login-footer">
         <a href="#" onclick="handleForgotPassword(event)">¿Olvidaste tu contraseña?</a>
       </div>
@@ -143,8 +153,22 @@
   <script src="/assets/js/config.js"></script>
   <script src="/assets/js/auth.js"></script>
   <script>
+    // Capture the URL hash BEFORE init — supabase-js clears it while detecting
+    // the session from a recovery/confirmation link.
+    const initialHash = window.location.hash || '';
     Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-    Auth.redirectIfLoggedIn();
+
+    if (initialHash.includes('type=recovery')) {
+      // Password recovery link: show the "set new password" form, don't redirect.
+      showRecovery();
+    } else if (initialHash.includes('error')) {
+      // Expired/invalid link (otp_expired, etc.) — show a friendly message.
+      const p = new URLSearchParams(initialHash.replace(/^#/, ''));
+      showAlert((p.get('error_description') || 'El link no es válido o ya expiró. Solicita uno nuevo.').replace(/\+/g, ' '));
+      history.replaceState(null, '', location.pathname);
+    } else {
+      Auth.redirectIfLoggedIn();
+    }
 
     function showTab(tab) {
       document.querySelectorAll('.login-tab').forEach((t, i) => {
@@ -221,6 +245,34 @@
         showAlert('Te enviamos un link para restablecer tu contraseña', 'success');
       } catch (err) {
         showAlert(err.message);
+      }
+    }
+
+    function showRecovery() {
+      document.querySelector('.login-tabs').classList.add('hidden');
+      document.getElementById('signin-form').classList.add('hidden');
+      document.getElementById('signup-form').classList.add('hidden');
+      document.querySelector('.login-footer').classList.add('hidden');
+      document.getElementById('recovery-form').classList.remove('hidden');
+      showAlert('Ingresa tu nueva contraseña.', 'success');
+    }
+
+    async function handleSetPassword(e) {
+      e.preventDefault();
+      const btn = document.getElementById('recovery-btn');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      hideAlert();
+      try {
+        await Auth.updatePassword(document.getElementById('recovery-password').value);
+        history.replaceState(null, '', location.pathname); // drop the recovery hash
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        showAlert(err.message === 'Auth session missing!'
+          ? 'El link expiró. Solicita uno nuevo desde "¿Olvidaste tu contraseña?".'
+          : err.message);
+        btn.disabled = false;
+        btn.textContent = 'Guardar contraseña';
       }
     }
   </script>

@@ -58,6 +58,13 @@ const Auth = (() => {
     if (error) throw error;
   }
 
+  // Set a new password for the currently-authenticated session (used by the
+  // recovery flow, where the recovery link establishes a temporary session).
+  async function updatePassword(newPassword) {
+    const { error } = await getClient().auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }
+
   /**
    * Protect a page — redirect to login if not authenticated.
    * Returns the session if authenticated.
@@ -89,6 +96,7 @@ const Auth = (() => {
     signUp,
     signOut,
     resetPassword,
+    updatePassword,
     requireSession,
     redirectIfLoggedIn,
   };
