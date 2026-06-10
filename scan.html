@@ -135,6 +135,7 @@
       <button id="mode-gate" class="active" onclick="setMode('gate')">Puerta principal</button>
       <button id="mode-table" onclick="setMode('table')">Puerta de mesa</button>
     </div>
+    <div id="door-label" class="hidden" style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:2px;color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius,6px);padding:9px;margin-bottom:20px;text-transform:uppercase;"></div>
 
     <div class="scanner-stats">
       <div class="scanner-stat">
@@ -190,6 +191,17 @@
       mode = m;
       document.getElementById('mode-gate').classList.toggle('active', m === 'gate');
       document.getElementById('mode-table').classList.toggle('active', m === 'table');
+    }
+
+    // ?stage=gate|table locks the scanner to one door and hides the toggle, so
+    // a door device can't accidentally check people in at the wrong door.
+    const lockStage = new URLSearchParams(window.location.search).get('stage');
+    if (lockStage === 'gate' || lockStage === 'table') {
+      mode = lockStage;
+      const tg = document.querySelector('.mode-toggle');
+      if (tg) tg.style.display = 'none';
+      const dl = document.getElementById('door-label');
+      if (dl) { dl.textContent = lockStage === 'gate' ? 'Puerta principal' : 'Puerta de mesa'; dl.classList.remove('hidden'); }
     }
 
     async function init() {
