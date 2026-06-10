@@ -31,7 +31,9 @@
     .field input.sm { width: 80px; }
 
     .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .tbl th { text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    .tbl th { text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; padding: 7px 10px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+    .tbl th:hover { color: var(--text-secondary); }
+    .tbl th .ar { color: var(--accent); font-size: 9px; margin-left: 3px; }
     .tbl th.r, .tbl td.r { text-align: right; }
     .tbl td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
     .trow { cursor: pointer; }
@@ -111,8 +113,8 @@
 
     <table class="tbl">
       <thead><tr>
-        <th>Mesa</th><th>Titular</th>
-        <th class="r">Cargados</th><th class="r">Puerta</th><th class="r">Mesa</th>
+        <th data-s="code">Mesa</th><th data-s="titular">Titular</th>
+        <th class="r" data-s="loaded">Cargados</th><th class="r" data-s="gate">Puerta</th><th class="r" data-s="table">Mesa</th>
       </tr></thead>
       <tbody id="tb"></tbody>
     </table>
@@ -137,6 +139,26 @@
     let tables = [];
     let query = '';
     let onlyIncomplete = false;
+    let sortKey = 'code';
+    let sortDir = 1;
+
+    // Natural order for table labels: Mesa 1..34 then Palco 35.., with 3A after 3.
+    function natKey(label) {
+      const isPalco = /palco/i.test(label || '');
+      const m = (label || '').match(/(\d+)\s*([A-Za-z]?)/);
+      const n = m ? parseInt(m[1]) : 9999;
+      const s = m && m[2] ? m[2].toUpperCase().charCodeAt(0) : 0;
+      return (isPalco ? 1 : 0) * 1e6 + n * 100 + s;
+    }
+    function sortTables(list) {
+      return list.slice().sort((a, b) => {
+        if (sortKey === 'titular') return (a.manager_name || '').toLowerCase().localeCompare((b.manager_name || '').toLowerCase()) * sortDir;
+        if (sortKey === 'loaded') return (a.counts.loaded - b.counts.loaded) * sortDir;
+        if (sortKey === 'gate') return (a.counts.gate - b.counts.gate) * sortDir;
+        if (sortKey === 'table') return (a.counts.table - b.counts.table) * sortDir;
+        return (natKey(a.label) - natKey(b.label)) * sortDir;
+      });
+    }
     let modalId = null;
 
     async function init() {
@@ -192,8 +214,12 @@
 
     function render() {
       kpis();
-      const list = filtered();
+      const list = sortTables(filtered());
       document.getElementById('count').textContent = `${list.length} / ${tables.length}`;
+      document.querySelectorAll('.tbl thead th[data-s]').forEach(th => {
+        const base = th.textContent.replace(/[▲▼]\s*$/, '').trim();
+        th.innerHTML = base + (th.dataset.s === sortKey ? ` <span class="ar">${sortDir > 0 ? '▲' : '▼'}</span>` : '');
+      });
       document.getElementById('tb').innerHTML = list.map(x => {
         const pct = x.max_guests ? Math.round(x.counts.loaded / x.max_guests * 100) : 0;
         const gate = `<span class="badge ${x.counts.gate ? 'b-gate' : 'b-zero'}">${x.counts.gate}</span>`;
@@ -353,6 +379,12 @@
       }
     }
 
+    document.querySelector('.tbl thead').addEventListener('click', e => {
+      const th = e.target.closest('th[data-s]');
+      if (!th) return;
+      if (sortKey === th.dataset.s) sortDir = -sortDir; else { sortKey = th.dataset.s; sortDir = 1; }
+      render();
+    });
     document.getElementById('q').addEventListener('input', e => { query = e.target.value; render(); });
     document.getElementById('incomplete').addEventListener('change', e => { onlyIncomplete = e.target.checked; render(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
