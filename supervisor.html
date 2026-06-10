@@ -241,15 +241,21 @@
       modalId = id;
       const link = `${location.origin}/invite/${x.token}`;
       const guests = (x.guests || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+      // A +N extra has no email of its own — its QR rides inside the primary's
+      // one email. So an extra counts as "sent" if its group's primary was sent.
+      const primaryOfGroup = (g) => g.group_id ? guests.find(o => o.group_id === g.group_id && o.email) : null;
+      const isSent = (g) => g.email_sent || (() => { const p = primaryOfGroup(g); return !!(p && p.email_sent); })();
+      const qrSent = guests.filter(isSent).length;
       const grows = guests.map((g, i) => {
-        const recip = g.email
-          ? esc(g.email)
-          : (g.email_sent ? '<span class="muted">titular (lote)</span>' : '<span class="muted">no enviado</span>');
-        const sent = g.email_sent ? ' <span class="tick" title="QR enviado">✓</span>' : '';
+        let recip, sent;
+        if (g.email && g.email_sent) { recip = esc(g.email); sent = true; }
+        else if (isSent(g)) { const p = primaryOfGroup(g); recip = `<span class="muted">titular (lote)${p && p.email ? ' · ' + esc(p.email) : ''}</span>`; sent = true; }
+        else { recip = '<span class="muted">no enviado</span>'; sent = false; }
+        const tick = sent ? ' <span class="tick" title="QR enviado">✓</span>' : '';
         return `
         <tr><td class="n">${i + 1}</td>
             <td>${esc(g.name)}</td>
-            <td>${recip}${sent}</td>
+            <td>${recip}${tick}</td>
             <td><span class="dot ${g.gate_scanned_at ? 'on-g' : 'off'}">${g.gate_scanned_at ? 'P' : '·'}</span>
                 <span class="dot ${g.table_scanned_at ? 'on-t' : 'off'}">${g.table_scanned_at ? 'M' : '·'}</span></td>
             <td style="text-align:right;"><button class="x-cancel" title="Cancelar este QR" onclick="deleteGuest('${x.id}','${g.id}',event)">✕ cancelar</button></td>
@@ -281,6 +287,7 @@
 
           <div class="mstats">
             <span>cargados <b>${x.counts.loaded}/${x.max_guests}</b></span>
+            <span>qr enviados <b>${qrSent}/${guests.length}</b></span>
             <span>puerta <b>${x.counts.gate}</b></span>
             <span>mesa <b>${x.counts.table}</b></span>
           </div>
