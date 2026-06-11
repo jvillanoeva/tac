@@ -180,7 +180,10 @@
     Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
     API.init(CONFIG.API_URL);
 
-    const slug = new URLSearchParams(window.location.search).get('slug');
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    const doorKey = params.get('k');   // present → public, login-free mode
+    const anon = !!doorKey;
     if (!slug) window.location.href = '/dashboard.html';
 
     let scanner = null;
@@ -205,11 +208,13 @@
     }
 
     async function init() {
-      await Auth.requireSession();
+      if (!anon) await Auth.requireSession();
 
       // Load event info
       try {
-        const event = await API.get(`/api/events/${slug}`);
+        const event = anon
+          ? await API.get(`/api/checkin/public/info?slug=${encodeURIComponent(slug)}&k=${encodeURIComponent(doorKey)}`)
+          : await API.get(`/api/events/${slug}`);
         document.getElementById('event-name').textContent = event.name;
         document.getElementById('event-meta').textContent =
           [event.date_label, event.venue].filter(Boolean).join(' · ');
@@ -261,7 +266,9 @@
       isProcessing = true;
 
       try {
-        const result = await API.post('/api/checkin', { token: decodedText, stage: mode });
+        const result = anon
+          ? await API.post('/api/checkin/public', { slug, k: doorKey, token: decodedText, stage: mode })
+          : await API.post('/api/checkin', { token: decodedText, stage: mode });
         showResult(result);
       } catch (err) {
         showResult({
