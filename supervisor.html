@@ -53,7 +53,7 @@
     /* Modal */
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: flex-start; justify-content: center; padding: 28px 16px; z-index: 100; overflow: auto; }
     .overlay.open { display: flex; }
-    .modal { background: var(--bg-card, #111); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 600px; max-width: 100%; }
+    .modal { background: var(--bg-card, #111); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 820px; max-width: 100%; }
     .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--border); }
     .modal-head .mt { font-size: 1.2rem; font-weight: 800; }
     .modal-head .x { cursor: pointer; color: var(--text-muted); font-size: 20px; background: none; border: 0; }
@@ -70,6 +70,8 @@
     .glist td.n { color: var(--text-muted); }
     .dot { display:inline-block; min-width: 22px; text-align:center; font-weight: 700; }
     .dot.on-g { color: var(--success); } .dot.on-t { color: #60a5fa; } .dot.off { color: var(--text-muted); }
+    .dotbtn { cursor: pointer; border-radius: 3px; }
+    .dotbtn:hover { background: var(--bg); outline: 1px solid var(--border); }
     .modal-foot { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--border); }
     .modal-foot .danger { margin-left: auto; }
     .x-cancel { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 11px; padding: 2px 8px; border-radius: var(--radius); cursor: pointer; }
@@ -256,8 +258,10 @@
         <tr><td class="n">${i + 1}</td>
             <td>${esc(g.name)}</td>
             <td>${recip}${tick}</td>
-            <td><span class="dot ${g.gate_scanned_at ? 'on-g' : 'off'}">${g.gate_scanned_at ? 'P' : '·'}</span>
-                <span class="dot ${g.table_scanned_at ? 'on-t' : 'off'}">${g.table_scanned_at ? 'M' : '·'}</span></td>
+            <td>
+              <span class="dot dotbtn ${g.gate_scanned_at ? 'on-g' : 'off'}" title="${g.gate_scanned_at ? 'En puerta' : 'Marcar puerta (manual)'}" onclick="manualCheck('${g.id}','gate',event)">P</span>
+              <span class="dot dotbtn ${g.table_scanned_at ? 'on-t' : 'off'}" title="${g.table_scanned_at ? 'En mesa' : 'Marcar mesa (manual)'}" onclick="manualCheck('${g.id}','table',event)">M</span>
+            </td>
             <td style="text-align:right;"><button class="x-cancel" title="Cancelar este QR" onclick="deleteGuest('${x.id}','${g.id}',event)">✕ cancelar</button></td>
         </tr>`;
       }).join('') || `<tr><td colspan="5" style="color:var(--text-muted);padding:8px;">Sin invitados / QRs cargados.</td></tr>`;
@@ -341,6 +345,19 @@
         await API.del(`/api/events/${slug}/invite-links/${linkId}/guests/${guestId}`);
         await load();
         openModal(linkId); // refresh the modal with the QR removed
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // Manual check-in from the table detail — mark a guest at the gate or mesa
+    // when the scanner can't (lost phone, dead QR, etc.).
+    async function manualCheck(guestId, stage, ev) {
+      if (ev) ev.stopPropagation();
+      const label = stage === 'gate' ? 'puerta principal' : 'mesa';
+      if (!confirm(`¿Registrar entrada manual en ${label}?`)) return;
+      try {
+        await API.post('/api/checkin/manual', { guest_id: guestId, stage });
+        await load();
+        if (modalId) openModal(modalId);
       } catch (e) { alert('Error: ' + e.message); }
     }
 
