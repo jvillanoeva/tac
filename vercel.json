@@ -8,6 +8,7 @@
     { "source": "/", "has": [{ "type": "host", "value": "sundaysunday.colectivo.live" }], "destination": "/sundaysunday.html" },
     { "source": "/e/:slug", "destination": "/evento.html?e=:slug" },
     { "source": "/invite/:token", "destination": "/invite.html?t=:token" },
+    { "source": "/keine/report", "destination": "/keine/report.html" },
     { "source": "/:slug", "destination": "/org.html?slug=:slug" }
   ],
   "headers": [

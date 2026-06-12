@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tac · lectura post-evento — keinemusik-cdmx-2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0d10; --pane:#101216; --bar:#0a0b0e; --line:#20242c; --line2:#2c313b;
+    --txt:#c9d1d9; --dim:#6e7681; --dim2:#484f58;
+    --green:#3fb950; --yellow:#d29922; --magenta:#bc8cff; --red:#f85149; --cyan:#39c5cf; --blue:#58a6ff;
+    --accent:#bc8cff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:auto}
+  body{background:var(--bg);color:var(--txt);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13.5px;line-height:1.65;overflow-x:hidden;padding:46px 0 58px;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent);color:#0c0d10}
+
+  /* scanlines */
+  .scan{position:fixed;inset:0;pointer-events:none;z-index:40;opacity:.05;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(201,209,217,.5) 2px 3px)}
+
+  /* ===== top titlebar ===== */
+  #titlebar{position:fixed;top:0;left:0;right:0;z-index:60;background:var(--bar);border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:12px;padding:10px 16px;font-size:12px;color:var(--dim)}
+  .dots{display:flex;gap:6px}
+  .dots i{width:11px;height:11px;border-radius:50%;display:block}
+  .dots i:nth-child(1){background:#ff5f56}.dots i:nth-child(2){background:#ffbd2e}.dots i:nth-child(3){background:#27c93f}
+  #titlebar .tpath{color:var(--txt)} #titlebar .tpath b{color:var(--accent);font-weight:700}
+  #titlebar .tright{margin-left:auto;color:var(--dim2)}
+  #progress{position:fixed;top:42px;left:0;height:2px;width:100%;z-index:60}
+  #progress i{display:block;height:100%;width:100%;background:var(--accent);transform:scaleX(0);transform-origin:left}
+
+  /* ===== bottom status bar ===== */
+  #statusbar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--bar);border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:12px;color:var(--dim)}
+  #statusbar .pr{color:var(--accent);font-weight:700}
+  #statusbar #secname{color:var(--txt)}
+  .caret{display:inline-block;width:8px;height:15px;background:var(--txt);vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  #statusbar .pct{margin-left:auto;color:var(--dim2);font-variant-numeric:tabular-nums}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+  .dim{color:var(--dim)} .dim2{color:var(--dim2)}
+  .g{color:var(--green)} .y{color:var(--yellow)} .m{color:var(--magenta)} .r{color:var(--red)} .c{color:var(--cyan)} .b{color:var(--blue)}
+
+  /* ===== hero / boot ===== */
+  #hero{min-height:calc(100svh - 104px);display:flex;flex-direction:column;justify-content:center;padding:60px 16px}
+  #hero .inner{max-width:1080px;margin:0 auto;width:100%}
+  .bootlog{font-size:13px;color:var(--dim);min-height:108px}
+  .bootlog p{white-space:pre-wrap;min-height:1.65em}
+  .bootlog .pr{color:var(--green);font-weight:700}
+  .bootlog .ok{color:var(--green)}
+  .bootlog p.cur::after{content:"▍";color:var(--txt);animation:blink 1s steps(1) infinite}
+  #heroTitle{margin-top:44px;font-weight:800;font-size:clamp(30px,5.6vw,72px);line-height:1.12;letter-spacing:-.01em;color:var(--txt);opacity:0}
+  #heroTitle em{font-style:normal;color:var(--accent)}
+  #heroSub{margin-top:22px;color:var(--dim);max-width:560px;opacity:0}
+  .scrollcue{margin-top:54px;font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:var(--dim2);opacity:0}
+
+  /* ===== panes ===== */
+  section.act{max-width:1080px;margin:0 auto 9vh;padding:0 16px}
+  .pane{background:var(--pane);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .phead{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+  .phead .sq{color:var(--accent)}
+  .phead .lab{color:var(--txt)}
+  .phead .tright{margin-left:auto;color:var(--dim2)}
+  .pbody{padding:30px 26px 34px}
+  h2.title{font-weight:700;font-size:clamp(20px,2.8vw,32px);line-height:1.3;letter-spacing:-.01em;max-width:820px}
+  h2.title em{font-style:normal;color:var(--yellow)}
+  .lede{margin-top:16px;font-size:13.5px;color:var(--dim);max-width:680px;line-height:1.8}
+  .lede b{color:var(--txt);font-weight:500}
+  .reveal{opacity:0}
+
+  /* stats */
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line2);margin-top:34px}
+  .stat{background:var(--bar);padding:24px 20px}
+  .stat .n{font-weight:800;font-size:clamp(28px,3.6vw,46px);font-variant-numeric:tabular-nums;line-height:1;color:var(--txt)}
+  .stat .l{font-size:11px;letter-spacing:.1em;text-transform:lowercase;color:var(--dim);margin-top:12px;line-height:1.7}
+  .stat.hl .n{color:var(--yellow)}
+  .floornote{margin-top:16px;font-size:12px;color:var(--dim2)}
+  .floornote b{color:var(--dim)}
+
+  /* chart */
+  .chartwrap{margin-top:30px;position:relative}
+  .legend{display:flex;gap:26px;font-size:11.5px;letter-spacing:.08em;color:var(--dim);margin-bottom:18px}
+  .legend span{display:flex;align-items:center;gap:9px}
+  .legend i{width:18px;height:2px;display:inline-block}
+  .chart-toggle{margin-left:auto;display:flex;border:1px solid var(--line2);border-radius:5px;overflow:hidden}
+  .chart-toggle button{font-family:inherit;font-size:11px;letter-spacing:.04em;color:var(--dim);background:transparent;border:0;padding:5px 12px;cursor:pointer;transition:color .15s,background .15s}
+  .chart-toggle button:hover{color:var(--txt)}
+  .chart-toggle button.on{background:var(--line2);color:var(--txt)}
+  #curva{width:100%;height:auto;display:block;overflow:visible;cursor:crosshair;touch-action:pan-y}
+  .tipbox{fill:var(--bar);stroke:var(--line2);stroke-width:1}
+  .tiptime{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;fill:var(--txt);letter-spacing:.08em}
+  .tiprow{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.04em}
+  .annot{font-family:'JetBrains Mono',monospace;font-size:11px;fill:var(--dim);letter-spacing:.04em}
+  .annot.hot{fill:var(--yellow)}
+  .axis{font-family:'JetBrains Mono',monospace;font-size:10px;fill:var(--dim2)}
+
+  /* venn */
+  .vennwrap{margin-top:30px;display:flex;justify-content:center}
+  #venn{width:100%;max-width:720px;overflow:visible}
+  .vlabel{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em}
+  .vnum{font-family:'JetBrains Mono',monospace;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .vsub{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.04em;fill:var(--dim)}
+  .vennkicker{margin-top:30px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line2)}
+  .vk{background:var(--bar);padding:20px}
+  .vk .n{font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+  .vk p{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.7}
+  .vk p b{color:var(--txt);font-weight:500}
+
+  /* rescate */
+  .caselist{margin-top:30px;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line2)}
+  .case{background:var(--bar);padding:24px 22px}
+  .case .k{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:12px}
+  .case h3{font-weight:700;font-size:16px;color:var(--txt)}
+  .case p{margin-top:10px;font-size:12.5px;color:var(--dim);line-height:1.75}
+  .case p b{color:var(--txt);font-weight:500}
+  .zipline{margin-top:26px;border:1px solid var(--line2);border-left:3px solid var(--yellow);background:var(--bar);padding:22px 24px;display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .zipline .n{font-weight:800;font-size:clamp(34px,4vw,52px);color:var(--yellow);font-variant-numeric:tabular-nums;line-height:1}
+  .zipline p{flex:1;min-width:260px;font-size:12.5px;color:var(--dim);line-height:1.75}
+  .zipline p b{color:var(--txt);font-weight:500}
+
+  /* fantasmas */
+  .ghostgrid{margin-top:30px;display:flex;gap:12px;flex-wrap:wrap;max-width:560px}
+  .ghost{width:48px;height:48px;border-radius:50%;background:var(--txt);flex:0 0 auto}
+  .ghostcap{margin-top:24px;font-size:12px;color:var(--dim);max-width:600px;line-height:2}
+  .ghostcap b{color:var(--red)}
+
+  /* chat log */
+  .log{margin-top:30px;border:1px solid var(--line2);background:var(--bar);border-radius:6px;padding:18px 20px;max-width:680px;font-size:12.5px}
+  .log p{opacity:0;white-space:pre-wrap;line-height:1.9}
+  .log .ts{color:var(--dim2)}
+  .log .who{font-weight:700}
+  .cupo{margin-top:38px;display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  .cupo .from,.cupo .to{font-weight:800;font-size:clamp(40px,6vw,76px);font-variant-numeric:tabular-nums;line-height:1}
+  .cupo .from{color:var(--dim2)}
+  .cupo .to{color:var(--yellow)}
+  .cupo .arrow{font-size:clamp(18px,2.6vw,30px);color:var(--dim)}
+  .cupo .delta{font-size:13px;letter-spacing:.1em;color:var(--green)}
+
+  /* changelog */
+  .shiplist{margin-top:30px;border-top:1px solid var(--line2)}
+  .ship{display:grid;grid-template-columns:26px 1fr 1.15fr;gap:18px;padding:18px 4px;border-bottom:1px solid var(--line);align-items:baseline}
+  .ship .idx{color:var(--green);font-weight:700}
+  .ship h3{font-weight:700;font-size:14.5px;color:var(--txt)}
+  .ship p{font-size:12.5px;color:var(--dim);line-height:1.7}
+  .ship p b{color:var(--txt);font-weight:500}
+
+  /* outro */
+  #outro{max-width:1080px;margin:0 auto;padding:6vh 16px 10vh}
+  #outro .pbody{padding:40px 30px}
+  #outro .cmdline{color:var(--dim);font-size:13px}
+  #outro .cmdline .pr{color:var(--green);font-weight:700}
+  #outro h2{margin-top:26px;font-weight:800;font-size:clamp(22px,3.6vw,44px);line-height:1.35;letter-spacing:-.01em}
+  #outro h2 em{font-style:normal;color:var(--yellow)}
+  #outro .sig{margin-top:30px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+  #outro .sig b{color:var(--txt)}
+
+  @media(max-width:820px){
+    .statgrid{grid-template-columns:repeat(2,1fr)}
+    .caselist{grid-template-columns:1fr}
+    .vennkicker{grid-template-columns:1fr}
+    .ship{grid-template-columns:22px 1fr;grid-template-rows:auto auto}
+    .ship p{grid-column:2}
+    #titlebar .tright{display:none}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .caret,.bootlog p.cur::after{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="scan"></div>
+
+<div id="titlebar">
+  <div class="dots"><i></i><i></i><i></i></div>
+  <span class="tpath"><b>tac</b> ~/lecturas/keinemusik-cdmx-2026</span>
+  <span class="tright">foro gnp · autódromo hnos. rodríguez · 11 jun 2026</span>
+</div>
+<div id="progress"><i></i></div>
+
+<div id="statusbar">
+  <span class="pr">&gt;</span><span id="secname">boot</span><span class="caret"></span>
+  <span class="pct" id="pct">0%</span>
+</div>
+
+<!-- ================= HERO / BOOT ================= -->
+<header id="hero">
+  <div class="inner">
+    <div class="bootlog" id="bootlog">
+      <p data-line="tac report --event keinemusik-cdmx-2026 --to lost-nights" data-prompt="1"></p>
+      <p data-line="  conectando a api.colectivo.live ............ ok"></p>
+      <p data-line="  leyendo registros de acceso ................ 764 filas"></p>
+      <p data-line="  generando lectura .......................... ok"></p>
+    </div>
+    <h1 id="heroTitle">La noche,<br><em>leída desde la puerta.</em></h1>
+    <p id="heroSub">Los datos de acceso de la noche, los hallazgos y las mejoras ya desplegadas.</p>
+    <div class="scrollcue" id="scrollcue">▼ scroll</div>
+  </div>
+</header>
+
+<!-- ================= 01 NÚMEROS ================= -->
+<section class="act" id="numeros" data-sec="la-escala">
+  <div class="pane">
+    <div class="phead"><span class="sq">■</span><span class="lab">la-escala</span><span class="tright">SELECT count(*) FROM checkins</span></div>
+    <div class="pbody">
+      <h2 class="title reveal">Una noche, dos puertas,<br><em>764 cruces verificados.</em></h2>
+      <p class="lede reveal">No estimamos la asistencia: la <b>medimos</b>. Cada acceso quedó registrado con hora, puerta y QR. Estos son los números duros de la noche.</p>
+      <div class="statgrid">
+        <div class="stat"><div class="n" data-count="52">0</div><div class="l">mesas y palcos</div></div>
+        <div class="stat"><div class="n" data-count="923">0</div><div class="l">cupo final</div></div>
+        <div class="stat"><div class="n" data-count="891">0</div><div class="l">invitados cargados</div></div>
+        <div class="stat hl"><div class="n" data-count="764">0</div><div class="l">personas verificadas en piso</div></div>
+      </div>
+      <p class="floornote reveal">// 764 es <b>piso, no techo</b>: solo cuenta a quien cruzó un escáner. la asistencia real fue mayor.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 02 LA CURVA ================= -->
+<section class="act" id="lacurva" data-sec="la-curva">
+  <div class="pane">
+    <div class="phead"><span class="sq">■</span><span class="lab">la-curva</span><span class="tright">checkins / 15 min — hover para leer</span></div>
+    <div class="pbody">
+      <h2 class="title reveal">La noche entera,<br><em>en accesos por 15 minutos.</em></h2>
+      <p class="lede reveal">Rampa desde las <b>18:45</b>, pico cerrado a las <b>21:00</b>, ventana fuerte de ~3 horas. La puerta de mesa (574) terminó por encima de la principal (560): el control real vivió adentro. A las <b>20:30</b> cambió la instrucción de acceso («muestra tu QR en la mesa») y la puerta de mesa pasó de 0 a 46 en minutos — el ajuste quedó dibujado en la curva.</p>
+      <div class="chartwrap">
+        <div class="legend">
+          <span><i style="background:var(--blue)"></i>puerta principal · 560</span>
+          <span><i style="background:var(--green)"></i>puerta de mesa · 574</span>
+          <span class="chart-toggle" id="curvaToggle">
+            <button type="button" data-mode="inc" class="on">por 15 min</button>
+            <button type="button" data-mode="cum">acumulado</button>
+          </span>
+        </div>
+        <svg id="curva" viewBox="0 0 1100 420" role="img" aria-label="Accesos por 15 minutos y acumulado; pico a las 21:00"></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03 DOS PUERTAS ================= -->
+<section class="act" id="puertas" data-sec="dos-puertas">
+  <div class="pane">
+    <div class="phead"><span class="sq">■</span><span class="lab">dos-puertas</span><span class="tright">union(principal, mesa) = 764</span></div>
+    <div class="pbody">
+      <h2 class="title reveal">Las puertas no fueron un embudo.<br><em>Fueron dos registros distintos.</em></h2>
+      <p class="lede reveal">Si todo el mundo hubiera pasado calle → mesa, casi todos caerían al centro. Solo el <b>48%</b> cruzó ambos puntos. Cada puerta vio una población distinta y parcial; el total real es la unión: <b>764</b>.</p>
+      <div class="vennwrap">
+        <svg id="venn" viewBox="0 0 760 400" role="img" aria-label="370 cruzaron ambas puertas, 190 solo principal, 204 solo mesa">
+          <text class="vlabel" x="210" y="42" text-anchor="middle" fill="var(--blue)">principal · 560</text>
+          <text class="vlabel" x="550" y="42" text-anchor="middle" fill="var(--green)">mesa · 574</text>
+          <circle id="vc1" cx="380" cy="225" r="148" fill="rgba(88,166,255,.07)" stroke="var(--blue)" stroke-width="1.5"/>
+          <circle id="vc2" cx="380" cy="225" r="148" fill="rgba(63,185,80,.07)" stroke="var(--green)" stroke-width="1.5"/>
+          <g id="vt" opacity="0">
+            <text class="vnum" x="218" y="220" text-anchor="middle" fill="var(--txt)" font-size="32" data-count="190">0</text>
+            <text class="vsub" x="218" y="244" text-anchor="middle">solo principal · 25%</text>
+            <text class="vnum" x="380" y="219" text-anchor="middle" fill="var(--txt)" font-size="40" data-count="370">0</text>
+            <text class="vsub" x="380" y="244" text-anchor="middle">ambas · 48%</text>
+            <text class="vnum" x="540" y="220" text-anchor="middle" fill="var(--txt)" font-size="32" data-count="204">0</text>
+            <text class="vsub" x="540" y="244" text-anchor="middle">solo mesa · 27%</text>
+          </g>
+        </svg>
+      </div>
+      <div class="vennkicker">
+        <div class="vk reveal"><div class="n b" data-count="190">0</div><p>se escanearon en la calle pero <b>nunca en su mesa</b> — la brecha de integridad de mesa, no entradas sin verificar.</p></div>
+        <div class="vk reveal"><div class="n" style="color:var(--txt)" data-count="370">0</div><p>cruzaron <b>ambos</b> controles — el recorrido completo tal como se diseñó.</p></div>
+        <div class="vk reveal"><div class="n g" data-count="204">0</div><p>solo en mesa — y el <b>96% llegó después de las 20:30</b>: las camionetas que pasaron de largo en la calle y la mesa atrapó.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 EL RESCATE ================= -->
+<section class="act" id="rescate" data-sec="soporte-en-vivo">
+  <div class="pane">
+    <div class="phead"><span class="sq">■</span><span class="lab">soporte-en-vivo</span><span class="tright">12 rescates · 0 fallos visibles</span></div>
+    <div class="pbody">
+      <h2 class="title reveal">12 invitados rescatados a mano.<br><em>Cero fricción visible en la puerta.</em></h2>
+      <p class="lede reveal">Durante la fiesta, 12 QRs se recuperaron y reenviaron uno a uno por WhatsApp y AirDrop. Al reconstruir cada caso, las causas raíz no estuvieron en el escáner — estuvieron en la <b>higiene de los datos</b>:</p>
+      <div class="caselist">
+        <div class="case reveal">
+          <div class="k">causa raíz 01</div>
+          <h3>Invitados duplicados entre mesas</h3>
+          <p>El mismo VIP invitado por <b>dos titulares distintos</b>. El primer QR entra; el segundo marca «duplicado» en la puerta. Cuatro casos esa noche — todos resueltos en vivo.</p>
+        </div>
+        <div class="case reveal">
+          <div class="k">causa raíz 02</div>
+          <h3>Palcos sobre-empaquetados</h3>
+          <p>Un palco de <b>32 personas con solo 2 correos</b>: un solo envío cargando los códigos de todos. Si ese correo falla, fallan 32 entradas. Solo el <b>42%</b> de los invitados tuvo correo propio.</p>
+        </div>
+      </div>
+      <div class="zipline reveal">
+        <div class="n" data-count="27">0</div>
+        <p>descargas del paquete <b>completo</b> de 891 QRs — la única herramienta que existía para recuperar <b>uno</b>. Ya construimos la descarga individual: hoy es <b>un clic</b>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 05 FANTASMAS ================= -->
+<section class="act" id="fantasmas" data-sec="los-fantasmas">
+  <div class="pane">
+    <div class="phead"><span class="sq">■</span><span class="lab">los-fantasmas</span><span class="tright">loaded=12 sent=12 scans=0</span></div>
+    <div class="pbody">
+      <h2 class="title reveal">Una mesa: 12 cargados, 12 QRs enviados, <em>0 escaneos.</em></h2>
+      <p class="lede reveal">Doce personas que entraron sin que nadie las detuviera. No es un fallo del sistema — es la prueba de que <b>la calidad del dato es disciplina de puerta</b>.</p>
+      <div class="ghostgrid" id="ghosts"></div>
+      <p class="ghostcap reveal">12 / 12 invitados de esa mesa entraron <b>sin dejar rastro</b>. por eso 764 es piso y no asistencia: la brecha de ~127 contra cupo está rellena de gente presente pero no escaneada.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 06 +27 EN VIVO ================= -->
+<section class="act" id="vivo" data-sec="demanda-en-vivo">
+  <div class="pane">
+    <div class="phead"><span class="sq">■</span><span class="lab">demanda-en-vivo</span><span class="tright">table_activity: {from, to, delta}</span></div>
+    <div class="pbody">
+      <h2 class="title reveal">«¿Dos más?» —<br><em>27 asientos agregados en plena fiesta.</em></h2>
+      <p class="lede reveal">Con la fiesta encendida, la demanda más valiosa apareció en tiempo real: ampliaciones de cupo coordinadas por WhatsApp, mesas nuevas, divisiones de última hora. El cupo creció en vivo:</p>
+      <div class="log" id="chatlog">
+        <p><span class="ts">[22:41]</span> <span class="who y">lost-nights</span>  ¿me abres dos lugares más en la 14? ya están aquí afuera</p>
+        <p><span class="ts">[22:42]</span> <span class="who g">tac</span>         listo — cupo 20 → 22 ✓</p>
+        <p><span class="ts">[23:05]</span> <span class="who y">lost-nights</span>  y el palco quiere meter 3 más…</p>
+      </div>
+      <div class="cupo reveal">
+        <span class="from">896</span><span class="arrow">→</span><span class="to" id="cupoTo">896</span>
+        <span class="delta">+27 asientos · en plena fiesta</span>
+      </div>
+      <p class="lede reveal" style="margin-top:30px">Esa es demanda de <b>pico, con la persona ya en la puerta</b> — el asiento más valioso de la noche. Antes se concedía por chat y no dejaba registro. Hoy <b>cada cambio de cupo queda asentado</b> con hora, mesa y delta. La próxima vez ese valor es visible para los dos — y podemos capturarlo juntos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 07 LO QUE YA CAMBIÓ ================= -->
+<section class="act" id="shipped" data-sec="changelog">
+  <div class="pane">
+    <div class="phead"><span class="sq">■</span><span class="lab">changelog</span><span class="tright">git log --since=2026-06-11</span></div>
+    <div class="pbody">
+      <h2 class="title reveal">Los hallazgos de la noche,<br><em>ahora en producción.</em></h2>
+      <p class="lede reveal">No esperamos a la siguiente fecha. Todo lo que la noche enseñó está en producción hoy:</p>
+      <div class="shiplist">
+        <div class="ship reveal"><span class="idx">+</span><h3>QR de código corto</h3><p>Escaneo instantáneo en cualquier teléfono, con cualquier luz. Compatible hacia atrás con los QRs ya enviados.</p></div>
+        <div class="ship reveal"><span class="idx">+</span><h3>Descarga individual por invitado</h3><p>El rescate de un QR pasa de descargar 891 a <b>un clic</b>, con estado usado/libre visible.</p></div>
+        <div class="ship reveal"><span class="idx">+</span><h3>Detección de duplicados</h3><p>Panel de «posibles duplicados» en el supervisor — los cuatro casos de la noche se habrían marcado <b>antes</b> de la puerta.</p></div>
+        <div class="ship reveal"><span class="idx">+</span><h3>Bitácora de actividad</h3><p>Descargas, entregas manuales y <b>cada cambio de cupo</b> dejan rastro con hora y responsable. Lo que antes vivía en WhatsApp, ahora es dato.</p></div>
+        <div class="ship reveal"><span class="idx">+</span><h3>Escáner de puerta sin login</h3><p>Enlaces por puerta para staff de acceso — cero fricción de cuentas en la operación.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= OUTRO ================= -->
+<footer id="outro" data-sec="exit">
+  <div class="pane">
+    <div class="pbody">
+      <p class="cmdline reveal"><span class="pr">$</span> tac summary</p>
+      <h2 class="reveal"><span data-count="923">0</span> de cupo · <span data-count="891">0</span> cargados ·<br><em><span data-count="764">0</span> verificados en piso.</em></h2>
+      <div class="sig reveal">keinemusik × lost nights × colectivo — tac · <b>tac.colectivo.live</b></div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+gsap.registerPlugin(ScrollTrigger);
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============ HERO — boot sequence ============ */
+(function(){
+  const lines = Array.from(document.querySelectorAll('#bootlog p'));
+  function typeLine(el){
+    const text = el.dataset.line;
+    if(reduced){ render(el,text,text.length); return Promise.resolve(); }
+    return new Promise(res=>{
+      el.classList.add('cur');
+      let i=0;
+      const id=setInterval(()=>{
+        i+=2;
+        render(el,text,Math.min(i,text.length));
+        if(i>=text.length){ clearInterval(id); el.classList.remove('cur'); setTimeout(res,140); }
+      },12);
+    });
+  }
+  function render(el,text,n){
+    const s = text.slice(0,n);
+    el.innerHTML = s
+      .replace(/^\$/,'<span class="pr">$</span>')
+      .replace(/ ok$/,' <span class="ok">ok</span>')
+      .replace(/ (764) filas$/,' <span class="ok">$1 filas</span>');
+  }
+  (async ()=>{
+    for(const l of lines) await typeLine(l);
+    gsap.to('#heroTitle',{opacity:1,duration:.6,ease:'power2.out'});
+    gsap.to('#heroSub',{opacity:1,y:0,duration:.8,delay:.5,ease:'power2.out'});
+    gsap.fromTo('#heroSub',{y:14},{y:0,duration:.8,delay:.5});
+    gsap.to('#scrollcue',{opacity:1,duration:.8,delay:.9});
+  })();
+  gsap.to('#hero .inner',{y:-60,opacity:0,ease:'none',scrollTrigger:{trigger:'#hero',start:'top top',end:'85% top',scrub:true}});
+})();
+
+/* ============ progress + status bar ============ */
+gsap.to('#progress i',{scaleX:1,ease:'none',scrollTrigger:{start:0,end:'max',scrub:.3}});
+(function(){
+  const name=document.getElementById('secname'), pct=document.getElementById('pct');
+  ScrollTrigger.create({start:0,end:'max',onUpdate(self){ pct.textContent=Math.round(self.progress*100)+'%'; }});
+  document.querySelectorAll('[data-sec]').forEach(sec=>{
+    ScrollTrigger.create({trigger:sec,start:'top 55%',end:'bottom 55%',
+      onToggle(self){ if(self.isActive) name.textContent=sec.dataset.sec; }});
+  });
+})();
+
+/* ============ generic reveals ============ */
+document.querySelectorAll('.reveal').forEach(el=>{
+  gsap.fromTo(el,{y:26,opacity:0},{y:0,opacity:1,duration:.9,ease:'power3.out',
+    scrollTrigger:{trigger:el,start:'top 88%'}});
+});
+
+/* ============ counters (HTML + SVG) ============ */
+document.querySelectorAll('[data-count]').forEach(el=>{
+  const end = +el.dataset.count;
+  ScrollTrigger.create({trigger:el,start:'top 90%',once:true,onEnter:()=>{
+    const obj={v:0};
+    gsap.to(obj,{v:end,duration:1.6,ease:'power2.out',onUpdate(){
+      el.textContent = Math.round(obj.v).toLocaleString('es-MX');
+    }});
+  }});
+});
+
+/* ============ LA CURVA — SVG draw + crosshair + toggle inc/acumulado ============ */
+(function(){
+  const lab = ['18:00','18:45','19:00','19:15','19:30','19:45','20:00','20:15','20:30','20:45','21:00','21:15','21:30','21:45','22:00','22:15','22:30','22:45','23:00','23:15','23:30','23:45','00:00','00:15','00:30','01:00'];
+  const gateI = [1,34,31,32,8,9,38,40,32,43,63,64,50,32,13,21,17,4,12,5,5,1,2,2,0,1];
+  const mesaI = [0,0,20,35,20,14,7,10,48,67,75,71,57,59,20,12,12,2,23,1,11,6,0,1,2,1];
+  const cum = a => { let s=0; return a.map(v => (s+=v)); };
+  const MODES = {
+    inc: { gate:gateI,      mesa:mesaI,      ymax:80,  ticks:[0,20,40,60,80] },
+    cum: { gate:cum(gateI), mesa:cum(mesaI), ymax:600, ticks:[0,150,300,450,600] }
+  };
+  let mode = 'inc';
+
+  const svg = document.getElementById('curva');
+  const Wv=1100, Hv=420, padL=38, padR=14, padT=46, padB=44;
+  const xmax = lab.length-1;
+  const X = i => padL + (Wv-padL-padR)*i/xmax;
+  const Y = (v,ymax) => Hv-padB - (Hv-padT-padB)*v/ymax;       // Y(0,·) is constant baseline
+  const lerp = (a,b,t) => a + (b-a)*t;
+  const linePath = (arr,ymax) => 'M'+arr.map((v,i)=>`${X(i).toFixed(1)},${Y(v,ymax).toFixed(1)}`).join(' L');
+  const areaFrom = d => d+` L${X(xmax)},${Y(0,1)} L${X(0)},${Y(0,1)} Z`;
+  const ns='http://www.w3.org/2000/svg';
+  const mk=(t,a,parent)=>{const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);(parent||svg).appendChild(e);return e};
+
+  // layers (back to front)
+  const gridG = mk('g',{});
+  const aG = mk('path',{fill:'rgba(88,166,255,.07)',opacity:0});
+  const aM = mk('path',{fill:'rgba(63,185,80,.07)',opacity:0});
+  const lG = mk('path',{fill:'none',stroke:'var(--blue)','stroke-width':2.2,'stroke-linejoin':'round'});
+  const lM = mk('path',{fill:'none',stroke:'var(--green)','stroke-width':2.2,'stroke-linejoin':'round'});
+
+  // x axis time labels (static)
+  lab.forEach((l,i)=>{ if(['19:00','20:00','21:00','22:00','23:00','00:00'].includes(l)){
+    const t=mk('text',{x:X(i),y:Hv-16,'text-anchor':'middle',class:'axis'}); t.textContent=l; }});
+
+  // y grid + labels (redrawn per mode)
+  function drawGrid(){
+    const {ymax,ticks}=MODES[mode];
+    while(gridG.firstChild) gridG.removeChild(gridG.firstChild);
+    ticks.forEach(v=>{
+      mk('line',{x1:padL,x2:Wv-padR,y1:Y(v,ymax),y2:Y(v,ymax),stroke:'rgba(201,209,217,.06)','stroke-width':1},gridG);
+      const t=mk('text',{x:padL-8,y:Y(v,ymax)+3,'text-anchor':'end',class:'axis'},gridG); t.textContent=v;
+    });
+  }
+  drawGrid();
+
+  // annotations (only meaningful on the per-15-min view)
+  const ann = [
+    {i:1, v:34, txt:'18:45 — arranca la rampa', dy:-18, cls:'annot'},
+    {i:6, v:38, txt:'20:00 — ráfagas: coches enteros', dy:-30, cls:'annot hot'},
+    {i:8, v:48, txt:'20:30 — cambio: «QR en la mesa»', dy:-44, cls:'annot hot'},
+    {i:10, v:75, txt:'21:00 — pico', dy:-16, cls:'annot'}
+  ];
+  const annEls = ann.map(a=>{
+    const g = mk('g',{opacity:0});
+    mk('line',{x1:X(a.i),x2:X(a.i),y1:Y(a.v,80)+a.dy+6,y2:Y(0,1),stroke:'rgba(201,209,217,.16)','stroke-dasharray':'3 4'},g);
+    const t=mk('text',{x:X(a.i),y:Y(a.v,80)+a.dy,'text-anchor':a.i>18?'end':(a.i<3?'start':'middle'),class:a.cls},g);
+    t.textContent=a.txt; return g;
+  });
+
+  // initial paths (inc) + scroll draw-on
+  lG.setAttribute('d', linePath(gateI,80)); lM.setAttribute('d', linePath(mesaI,80));
+  aG.setAttribute('d', areaFrom(lG.getAttribute('d'))); aM.setAttribute('d', areaFrom(lM.getAttribute('d')));
+  [lG,lM].forEach(p=>{ const L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; });
+  gsap.timeline({scrollTrigger:{trigger:'#curva',start:'top 75%',end:'+=400',scrub:reduced?false:.6}})
+    .to(lG,{strokeDashoffset:0,ease:'none',duration:1},0)
+    .to(lM,{strokeDashoffset:0,ease:'none',duration:1},.08)
+    .to([aG,aM],{opacity:1,duration:.4},.7)
+    .to(annEls,{opacity:1,stagger:.12,duration:.3},.55);
+
+  /* ---- toggle inc <-> cum (morph) ---- */
+  function toggle(next){
+    if(next===mode) return;
+    const from=MODES[mode], to=MODES[next]; mode=next;
+    lG.style.strokeDasharray='none'; lM.style.strokeDasharray='none';
+    gsap.to(gridG,{opacity:0,duration:.2,onComplete(){ drawGrid(); gsap.to(gridG,{opacity:1,duration:.25}); }});
+    gsap.to(annEls,{opacity: next==='inc'?1:0, duration:.3, stagger: next==='inc'?.05:0});
+    const o={t:0};
+    gsap.to(o,{t:1,duration:.85,ease:'power3.inOut',onUpdate(){
+      const t=o.t;
+      const gl='M'+from.gate.map((v,i)=>`${X(i).toFixed(1)},${lerp(Y(v,from.ymax),Y(to.gate[i],to.ymax),t).toFixed(1)}`).join(' L');
+      const ml='M'+from.mesa.map((v,i)=>`${X(i).toFixed(1)},${lerp(Y(v,from.ymax),Y(to.mesa[i],to.ymax),t).toFixed(1)}`).join(' L');
+      lG.setAttribute('d',gl); lM.setAttribute('d',ml);
+      aG.setAttribute('d',areaFrom(gl)); aM.setAttribute('d',areaFrom(ml));
+    }});
+    lastI = -1;
+  }
+  const toggleEl = document.getElementById('curvaToggle');
+  toggleEl.addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b || b.dataset.mode===mode) return;
+    toggleEl.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+    toggle(b.dataset.mode);
+  });
+
+  /* ---- crosshair + live readout ---- */
+  const hov = mk('g',{opacity:0,'pointer-events':'none'});
+  const hel=(t,a)=>mk(t,a,hov);
+  const cross = hel('line',{y1:padT-6,y2:Y(0,1),stroke:'rgba(201,209,217,.4)','stroke-width':1,'stroke-dasharray':'2 3'});
+  const dotG = hel('circle',{r:4.5,fill:'var(--bar)',stroke:'var(--blue)','stroke-width':2.2});
+  const dotM = hel('circle',{r:4.5,fill:'var(--bar)',stroke:'var(--green)','stroke-width':2.2});
+  const tipW=190, tipH=78;
+  const tip = mk('g',{},hov);
+  const tel=(t,a)=>mk(t,a,tip);
+  tel('rect',{width:tipW,height:tipH,rx:4,class:'tipbox'});
+  const tTime = tel('text',{x:14,y:24,class:'tiptime'});
+  tel('circle',{cx:18,cy:43,r:4,fill:'var(--blue)'});
+  const tGate = tel('text',{x:30,y:47,class:'tiprow',fill:'var(--blue)'});
+  tel('circle',{cx:18,cy:63,r:4,fill:'var(--green)'});
+  const tMesa = tel('text',{x:30,y:67,class:'tiprow',fill:'var(--green)'});
+
+  let lastI = -1, shown = false;
+  function show(on){
+    if(on===shown) return; shown=on;
+    gsap.to(hov,{opacity:on?1:0,duration:.25,overwrite:true});
+  }
+  function move(e){
+    const M=MODES[mode], ym=M.ymax;
+    const r = svg.getBoundingClientRect();
+    const xr = (e.clientX - r.left)/r.width * Wv;
+    let i = Math.round((xr-padL)/(Wv-padL-padR)*xmax);
+    i = Math.max(0, Math.min(xmax, i));
+    show(true);
+    if(i===lastI) return; lastI=i;
+    const x = X(i);
+    cross.setAttribute('x1',x); cross.setAttribute('x2',x);
+    dotG.setAttribute('cx',x); dotG.setAttribute('cy',Y(M.gate[i],ym));
+    dotM.setAttribute('cx',x); dotM.setAttribute('cy',Y(M.mesa[i],ym));
+    tTime.textContent = lab[i] + (mode==='cum' ? '  · acum.' : '');
+    tGate.textContent = 'principal  '+M.gate[i];
+    tMesa.textContent = 'mesa       '+M.mesa[i];
+    const ty = Math.max(padT-6, Math.min(Y(Math.max(M.gate[i],M.mesa[i]),ym)-tipH-14, Y(0,1)-tipH-10));
+    const tx = x+tipW+24>Wv ? x-tipW-14 : x+14;
+    tip.setAttribute('transform',`translate(${tx},${ty})`);
+    gsap.fromTo([dotG,dotM],{attr:{r:6.5}},{attr:{r:4.5},duration:.35,ease:'power2.out',overwrite:true});
+  }
+  svg.addEventListener('pointermove', move, {passive:true});
+  svg.addEventListener('pointerdown', move, {passive:true});
+  svg.addEventListener('pointerleave', ()=>{ show(false); lastI=-1; });
+})();
+
+/* ============ VENN — circles separate ============ */
+(function(){
+  gsap.timeline({scrollTrigger:{trigger:'#venn',start:'top 70%'}})
+    .to('#vc1',{attr:{cx:295},duration:1.3,ease:'power3.inOut'},0)
+    .to('#vc2',{attr:{cx:465},duration:1.3,ease:'power3.inOut'},0)
+    .to('#vt',{opacity:1,duration:.6},.9);
+})();
+
+/* ============ FANTASMAS ============ */
+(function(){
+  const g = document.getElementById('ghosts');
+  for(let i=0;i<12;i++){ const d=document.createElement('div'); d.className='ghost'; g.appendChild(d); }
+  const ghosts = Array.from(g.children);
+  const tl = gsap.timeline({scrollTrigger:{trigger:'#ghosts',start:'top 80%'}});
+  tl.from(ghosts,{scale:0,opacity:0,stagger:.06,duration:.5,ease:'back.out(2)'});
+  ghosts.forEach((el,i)=>{
+    tl.to(el,{backgroundColor:'rgba(201,209,217,0)',duration:.45,ease:'power1.inOut',
+      onStart(){ el.style.border='1.5px dashed var(--red)'; }}, .9 + i*.09);
+  });
+})();
+
+/* ============ chat log + cupo ============ */
+(function(){
+  gsap.timeline({scrollTrigger:{trigger:'#chatlog',start:'top 82%'}})
+    .to('#chatlog p',{opacity:1,stagger:.55,duration:.35,ease:'none'});
+  ScrollTrigger.create({trigger:'.cupo',start:'top 88%',once:true,onEnter:()=>{
+    const el=document.getElementById('cupoTo'), obj={v:896};
+    gsap.to(obj,{v:923,duration:1.6,ease:'power2.out',onUpdate(){ el.textContent=Math.round(obj.v); }});
+  }});
+})();
+</script>
+</body>
+</html>
