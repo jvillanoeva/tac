@@ -74,6 +74,9 @@
     .dotbtn:hover { background: var(--bg); outline: 1px solid var(--border); }
     .modal-foot { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--border); }
     .modal-foot .danger { margin-left: auto; }
+    .qr-dl { background: none; border: 1px solid var(--border); color: var(--accent); font-size: 11px; padding: 2px 8px; border-radius: var(--radius); cursor: pointer; margin-right: 4px; }
+    .qr-dl:hover { border-color: var(--accent); }
+    .dl { color: var(--accent); font-size: 11px; font-family: ui-monospace, monospace; }
     .x-cancel { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 11px; padding: 2px 8px; border-radius: var(--radius); cursor: pointer; }
     .x-cancel:hover { color: var(--danger); border-color: var(--danger); }
     .tick { color: var(--success); font-weight: 700; }
@@ -127,6 +130,19 @@
     <div class="modal" id="modal"></div>
   </div>
 
+  <div class="overlay" id="qr-overlay" onclick="if(event.target===this)closeQr()">
+    <div class="modal" style="max-width:340px;">
+      <div class="modal-head"><div class="mt" id="qr-title" style="font-size:13px;"></div><button class="x" onclick="closeQr()">✕</button></div>
+      <div class="modal-body" style="text-align:center;">
+        <img id="qr-img" alt="QR" style="width:260px;height:260px;background:#fff;padding:10px;border-radius:6px;image-rendering:pixelated;">
+        <div id="qr-code" style="font-family:ui-monospace,monospace;font-size:12px;color:var(--text-secondary);margin-top:10px;letter-spacing:1px;"></div>
+        <div id="qr-state" style="font-size:12px;margin-top:8px;"></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-sm" onclick="downloadCurrentQr()">Descargar PNG</button><button class="btn btn-secondary btn-sm" onclick="closeQr()">Cerrar</button></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/js/config.js"></script>
   <script src="/assets/js/auth.js"></script>
@@ -189,6 +205,44 @@
     }
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+    // ── Per-line QR viewer / download (hand a single seat's QR to a guest) ──────
+    let qrFilename = 'qr';
+    function qrCanvas(text, scale = 8, margin = 2) {
+      const qr = qrcode(0, 'L'); qr.addData(text); qr.make();
+      const n = qr.getModuleCount();
+      const size = (n + margin * 2) * scale;
+      const c = document.createElement('canvas'); c.width = size; c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#000';
+      for (let r = 0; r < n; r++) for (let col = 0; col < n; col++) if (qr.isDark(r, col)) ctx.fillRect((col + margin) * scale, (r + margin) * scale, scale, scale);
+      return c;
+    }
+    function showQr(btn) {
+      const code = btn.dataset.code, title = btn.dataset.title || 'QR', used = btn.dataset.used === '1';
+      if (!code) { alert('Este invitado no tiene código QR.'); return; }
+      document.getElementById('qr-img').src = qrCanvas(code).toDataURL('image/png');
+      document.getElementById('qr-title').textContent = title;
+      document.getElementById('qr-code').textContent = code;
+      const st = document.getElementById('qr-state');
+      st.textContent = used ? '⚠ Este lugar ya fue escaneado' : '✓ Lugar disponible (sin escanear)';
+      st.style.color = used ? 'var(--warning)' : 'var(--success)';
+      qrFilename = title.replace(/[^\w\-]+/g, '_');
+      document.getElementById('qr-overlay').classList.add('open');
+      logActivity(btn.dataset.gid, 'download');
+    }
+    function logActivity(gid, action) {
+      if (!gid) return;
+      API.post(`/api/events/${slug}/guests/${gid}/activity`, { action, source: 'supervisor' }).catch(() => {});
+    }
+    function downloadCurrentQr() {
+      const a = document.createElement('a');
+      a.href = document.getElementById('qr-img').src;
+      a.download = qrFilename + '.png';
+      a.click();
+    }
+    function closeQr() { document.getElementById('qr-overlay').classList.remove('open'); }
 
     function kpis() {
       const t = tables.length;
@@ -257,12 +311,15 @@
         return `
         <tr><td class="n">${i + 1}</td>
             <td>${esc(g.name)}</td>
-            <td>${recip}${tick}</td>
+            <td>${recip}${tick}${g.dl_count ? ` <span class="dl" title="Descargado ${g.dl_last ? new Date(g.dl_last).toLocaleString('es-MX') : ''}">⬇${g.dl_count}</span>` : ''}</td>
             <td>
               <span class="dot dotbtn ${g.gate_scanned_at ? 'on-g' : 'off'}" title="${g.gate_scanned_at ? 'En puerta' : 'Marcar puerta (manual)'}" onclick="manualCheck('${g.id}','gate',event)">P</span>
               <span class="dot dotbtn ${g.table_scanned_at ? 'on-t' : 'off'}" title="${g.table_scanned_at ? 'En mesa' : 'Marcar mesa (manual)'}" onclick="manualCheck('${g.id}','table',event)">M</span>
             </td>
-            <td style="text-align:right;"><button class="x-cancel" title="Cancelar este QR" onclick="deleteGuest('${x.id}','${g.id}',event)">✕ cancelar</button></td>
+            <td style="text-align:right;white-space:nowrap;">
+              <button class="qr-dl" title="Ver / descargar el QR de este lugar" data-gid="${g.id}" data-code="${g.short_code || ''}" data-title="${esc(x.label + ' · ' + g.name)}" data-used="${(g.gate_scanned_at || g.table_scanned_at) ? '1' : '0'}" onclick="showQr(this)">⬇ QR</button>
+              <button class="x-cancel" title="Cancelar este QR" onclick="deleteGuest('${x.id}','${g.id}',event)">✕</button>
+            </td>
         </tr>`;
       }).join('') || `<tr><td colspan="5" style="color:var(--text-muted);padding:8px;">Sin invitados / QRs cargados.</td></tr>`;
 
