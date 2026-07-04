@@ -121,6 +121,13 @@
     .result-notes { color: var(--text-secondary); font-size: 14px; margin-bottom: 8px; }
     .result-message { color: var(--text-secondary); font-size: 14px; }
     .result-stats { margin-top: 16px; font-size: 13px; color: var(--text-muted); }
+
+    /* RSVP promo (only rendered when the API response carries a promo block) */
+    .result-promo { display: none; font-size: 3.4rem; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin: 10px 0 2px; }
+    .result-promo.gratis { color: var(--success, #2ecc71); }
+    .result-promo.pay { color: var(--warning, #f1c40f); }
+    .result-promo.full { color: var(--danger, #e74c3c); }
+    .result-promo-slot { display: none; font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 1px; }
   </style>
 </head>
 <body>
@@ -161,6 +168,8 @@
       <div class="result-icon" id="result-icon"></div>
       <div class="result-name" id="result-name"></div>
       <div class="result-tier" id="result-tier"></div>
+      <div class="result-promo" id="result-promo"></div>
+      <div class="result-promo-slot" id="result-promo-slot"></div>
       <div class="result-notes" id="result-notes"></div>
       <div class="result-message" id="result-message"></div>
       <div class="result-stats" id="result-stats"></div>
@@ -279,11 +288,41 @@
       }
     }
 
+    // RSVP promo display — only fires when the API response carries `promo`
+    // (RSVP-tier guest on an event with rsvp_promo). All other scans leave
+    // these elements hidden and the flow untouched.
+    function renderPromo(result) {
+      const big = document.getElementById('result-promo');
+      const slot = document.getElementById('result-promo-slot');
+      big.style.display = 'none'; big.className = 'result-promo'; big.textContent = '';
+      slot.style.display = 'none'; slot.textContent = '';
+      const p = result.promo;
+      if (!p) return;
+      if (p.expired) {
+        big.textContent = p.price != null ? `COVER $${p.price}` : 'COVER COMPLETO';
+        big.classList.add('full');
+      } else if (p.price === 0) {
+        big.textContent = 'GRATIS';
+        big.classList.add('gratis');
+        if (p.slot) {
+          slot.textContent = `#${p.slot} de ${p.free_total}` +
+            (p.remaining_free != null ? ` · quedan ${p.remaining_free}` : '');
+          slot.style.display = 'block';
+        }
+      } else if (p.price != null) {
+        big.textContent = `$${p.price}`;
+        big.classList.add('pay');
+        if (p.free_total) { slot.textContent = `los ${p.free_total} gratis ya se usaron`; slot.style.display = 'block'; }
+      }
+      big.style.display = 'block';
+    }
+
     function showResult(result) {
       const overlay = document.getElementById('result-overlay');
       const card = document.getElementById('result-card');
 
       card.className = 'result-card';
+      renderPromo(result);
 
       if (result.status === 'success') {
         card.classList.add('success');
@@ -306,6 +345,15 @@
         document.getElementById('result-tier').textContent = result.guest?.tier || '';
         document.getElementById('result-tier').style.color = result.guest?.tier === 'VIP' ? '#f1c40f' : 'var(--text-muted)';
         document.getElementById('result-notes').textContent = result.guest?.notes || '';
+        document.getElementById('result-message').textContent = result.message;
+        document.getElementById('result-stats').textContent = '';
+      } else if (result.status === 'expired') {
+        card.classList.add('error');
+        document.getElementById('result-icon').textContent = '✕';
+        document.getElementById('result-name').textContent = result.guest?.name || '';
+        document.getElementById('result-tier').textContent = result.guest?.tier || '';
+        document.getElementById('result-tier').style.color = 'var(--text-muted)';
+        document.getElementById('result-notes').textContent = '';
         document.getElementById('result-message').textContent = result.message;
         document.getElementById('result-stats').textContent = '';
       } else {
