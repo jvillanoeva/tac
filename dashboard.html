@@ -164,6 +164,97 @@
       margin-top: 32px;
     }
     .section-label:first-child { margin-top: 0; }
+    /* ── List/calendar toggle + month grid ─────────────────────────── */
+    .view-toggle { display: flex; gap: 2px; margin-bottom: 16px; }
+    .view-toggle button {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      padding: 6px 14px;
+      background: none;
+      border: 1px solid #1f2937;
+      color: #6b7280;
+      cursor: pointer;
+      transition: color 120ms, border-color 120ms;
+    }
+    .view-toggle button:hover { color: #9ca3af; }
+    .view-toggle button.active { color: #ffffff; border-color: #4b5563; }
+    .cal-head {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .cal-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: #e5e7eb;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      min-width: 160px;
+      text-align: center;
+    }
+    .cal-nav {
+      background: none;
+      border: 1px solid #1f2937;
+      color: #6b7280;
+      font-size: 14px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+    }
+    .cal-nav:hover { color: #e5e7eb; border-color: #374151; }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .cal-dow {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: #4b5563;
+      text-align: center;
+      padding: 6px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+    .cal-cell {
+      border: 1px solid #1f2937;
+      min-height: 74px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .cal-cell.empty { border-color: transparent; }
+    .cal-cell.today { border-color: #4b5563; background: #16181d; }
+    .cal-cell.today .cal-day { color: #ffffff; }
+    .cal-day {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #4b5563;
+    }
+    .cal-chip {
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      line-height: 1.3;
+      color: #d1fae5;
+      background: #123324;
+      border: 1px solid #1c4a34;
+      padding: 3px 5px;
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cal-chip:hover { border-color: #34d399; }
+    .cal-chip.draft {
+      color: #9ca3af;
+      background: #1a1a1a;
+      border: 1px dashed #374151;
+    }
+    .cal-chip.draft:hover { border-color: #6b7280; }
     .btn-primary.hero {
       background: none;
       border: 1px solid #374151;
@@ -502,12 +593,100 @@
             <a href="${newEventHref}" class="btn btn-primary mt-24">+ Nuevo evento</a>
           </div>
         ` : `
-          <div class="events-list">
-            ${events.map(ev => renderEventCard(ev, filter === '__staff' ? ev.staff_role : null, orgSlug)).join('')}
+          <div class="view-toggle">
+            <button id="vt-list" onclick="setEventsView('list')">Lista</button>
+            <button id="vt-cal" onclick="setEventsView('cal')">Calendario</button>
           </div>
+          <div id="events-body"></div>
         `}
       `;
       document.getElementById('page-body').innerHTML = html;
+      if (events.length > 0) {
+        viewState = { events, filter, orgSlug };
+        renderEventsBody();
+      }
+    }
+
+    // ── List / calendar view of an org's events ─────────────────────────
+    let viewState = null;                      // { events, filter, orgSlug }
+    let calMonth = null;                       // Date pinned to the 1st of the shown month
+
+    function setEventsView(v) {
+      localStorage.setItem('tac_events_view', v);
+      if (v === 'list') calMonth = null;       // reset so the calendar reopens on today
+      renderEventsBody();
+    }
+
+    function eventDate(ev) {
+      // Real date if set; created_at keeps undated legacy events visible.
+      return new Date(ev.date || ev.created_at);
+    }
+
+    function renderEventsBody() {
+      const view = localStorage.getItem('tac_events_view') || 'list';
+      document.getElementById('vt-list').classList.toggle('active', view === 'list');
+      document.getElementById('vt-cal').classList.toggle('active', view === 'cal');
+      const el = document.getElementById('events-body');
+      const { events, filter, orgSlug } = viewState;
+
+      if (view === 'list') {
+        const sorted = [...events].sort((a, b) => eventDate(b) - eventDate(a));
+        el.innerHTML = `<div class="events-list">
+          ${sorted.map(ev => renderEventCard(ev, filter === '__staff' ? ev.staff_role : null, orgSlug)).join('')}
+        </div>`;
+        return;
+      }
+      el.innerHTML = renderCalendar(events, orgSlug);
+    }
+
+    function shiftMonth(delta) {
+      calMonth.setMonth(calMonth.getMonth() + delta);
+      renderEventsBody();
+    }
+
+    function renderCalendar(events, orgSlug) {
+      const now = new Date();
+      if (!calMonth) calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const y = calMonth.getFullYear(), m = calMonth.getMonth();
+
+      // Events keyed by day of the shown month
+      const byDay = {};
+      for (const ev of events) {
+        const d = eventDate(ev);
+        if (d.getFullYear() === y && d.getMonth() === m) {
+          (byDay[d.getDate()] = byDay[d.getDate()] || []).push(ev);
+        }
+      }
+
+      const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const DOW = ['L','M','X','J','V','S','D'];
+      const firstDow = (new Date(y, m, 1).getDay() + 6) % 7;   // Monday-first
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      const isThisMonth = now.getFullYear() === y && now.getMonth() === m;
+
+      let cells = '';
+      for (let i = 0; i < firstDow; i++) cells += '<div class="cal-cell empty"></div>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const todayCls = isThisMonth && d === now.getDate() ? ' today' : '';
+        const chips = (byDay[d] || []).map(ev => {
+          const href = orgSlug === 'lost-nights'
+            ? `/supervisor.html?slug=${ev.slug}`
+            : `/guestlist.html?slug=${ev.slug}`;
+          return `<a class="cal-chip${ev.published ? '' : ' draft'}" href="${href}" title="${esc(ev.name)}${ev.published ? '' : ' (borrador)'}">${esc(ev.name)}</a>`;
+        }).join('');
+        cells += `<div class="cal-cell${todayCls}"><div class="cal-day">${d}</div>${chips}</div>`;
+      }
+
+      return `
+        <div class="cal-head">
+          <button class="cal-nav" onclick="shiftMonth(-1)">‹</button>
+          <span class="cal-title">${MONTHS[m]} ${y}</span>
+          <button class="cal-nav" onclick="shiftMonth(1)">›</button>
+        </div>
+        <div class="cal-grid">
+          ${DOW.map(d => `<div class="cal-dow">${d}</div>`).join('')}
+          ${cells}
+        </div>`;
     }
 
     function esc(s) {
@@ -538,6 +717,7 @@
         <button class="event-menu-btn" onclick="event.preventDefault();event.stopPropagation();toggleMenu('${ev.slug}')">&#8942;</button>
         <div class="event-menu" id="menu-${ev.slug}">
           <a href="/event-editor.html?slug=${ev.slug}">Editar</a>
+          <button onclick="event.preventDefault();duplicateEvent('${ev.slug}', '${ev.name.replace(/'/g, "\\'")}')">Duplicar</button>
           <a href="/guestlist.html?slug=${ev.slug}">Guestlist</a>
           <a href="/supervisor.html?slug=${ev.slug}">Supervisor</a>
           <a href="/scan.html?slug=${ev.slug}">Scanner</a>
@@ -575,6 +755,27 @@
         document.querySelectorAll('.event-menu.open').forEach(m => m.classList.remove('open'));
       }
     });
+
+    // Duplicate an event's settings onto a new date. The copy starts as
+    // Borrador (unpublished); we jump straight to the editor to swap the flyer.
+    async function duplicateEvent(slug, name) {
+      const today = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const defaultDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      const date = prompt(`Duplicar "${name}"\n\nFecha del nuevo evento (YYYY-MM-DD):`, defaultDate);
+      if (!date) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+        alert('Formato de fecha inválido. Usa YYYY-MM-DD.');
+        return;
+      }
+      try {
+        const copy = await API.post(`/api/events/${slug}/duplicate`, { date: date.trim() });
+        if (copy.notes && copy.notes.length) alert(copy.notes.join('\n'));
+        location.href = `/event-editor.html?slug=${copy.slug}`;
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
 
     async function deleteEvent(slug, name) {
       if (!confirm(`¿Eliminar "${name}"?\n\nSe borrarán también invitados, staff y enlaces de invitación.\nNo se puede deshacer.`)) return;
