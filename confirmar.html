@@ -290,13 +290,63 @@
       show('s-dead');
     }
 
+    /**
+     * fetch with a timeout and automatic retries. A guest who hits one
+     * transient blip should not be dead-ended — at a few thousand invites
+     * some requests will fail, and they only get one link.
+     *
+     * Retrying the POST is safe: claim_guest_access() is atomic, so a
+     * duplicate attempt returns already_claimed instead of sending a second
+     * ticket email.
+     */
+    function apiFetch(method, attempt) {
+      attempt = attempt || 1;
+      var MAX = 3;
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
+
+      var opts = { method: method };
+      if (ctrl) opts.signal = ctrl.signal;
+
+      return fetch(API + '/api/claim/' + encodeURIComponent(token), opts)
+        .then(function (r) {
+          clearTimeout(timer);
+          // 5xx is worth retrying; 4xx is a real answer about the token.
+          if (r.status >= 500 && attempt < MAX) throw new Error('http ' + r.status);
+          return r.json().then(function (b) { return { ok: r.ok, body: b }; });
+        })
+        .catch(function (err) {
+          clearTimeout(timer);
+          if (attempt >= MAX) throw err;
+          // Surfaced for diagnosis — "check your connection" hid the real cause.
+          console.warn('[claim] ' + method + ' attempt ' + attempt + ' failed:', err && err.message);
+          var backoff = attempt === 1 ? 1500 : 4000;
+          return new Promise(function (res) { setTimeout(res, backoff); })
+            .then(function () { return apiFetch(method, attempt + 1); });
+        });
+    }
+
+    function retryable(title, body) {
+      el('actionTitle').textContent = title;
+      el('actionBody').textContent = body;
+      el('confirmBtn').disabled = false;
+      el('confirmBtn').textContent = 'Reintentar';
+      show('s-action');
+    }
+
+    // Set once we've fired at least one POST. If a later attempt comes back
+    // "already_claimed", it was almost certainly OUR earlier attempt landing
+    // after its response was lost — so show success, not the "ya fue
+    // utilizado" artwork. A genuine second visit starts fresh with this false.
+    var posted = false;
+
     // The POST is what actually burns the token. Mail-security scanners
     // pre-fetch the link but do not run this script, so their visit only
     // hits the read-only GET above and the guest's link stays alive.
     function confirm_() {
       show('s-loading');
-      fetch(API + '/api/claim/' + encodeURIComponent(token), { method: 'POST' })
-        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      posted = true;
+      apiFetch('POST')
         .then(function (res) {
           var b = res.body || {};
           if (res.ok && b.status === 'claimed') {
@@ -304,22 +354,23 @@
             if (!showArt(b, 'done')) show('s-done');
             return;
           }
+          if (b.status === 'used' && posted) {
+            // Our own attempt got through; the response just didn't.
+            applyBrand(b);
+            if (!showArt(b, 'done')) show('s-done');
+            return;
+          }
           if (b.status === 'used' || b.status === 'expired' || b.status === 'not_found') {
             dead(b, b.status); return;
           }
-          // Transient (send_failed / 5xx) — let them try again.
-          el('actionTitle').textContent = 'Casi listo';
-          el('actionBody').textContent = b.error || 'No pudimos enviar tus accesos. Intenta de nuevo.';
-          el('confirmBtn').disabled = false;
-          el('confirmBtn').textContent = 'Reintentar';
-          show('s-action');
+          retryable('Casi listo', b.error || 'No pudimos enviar tus accesos. Intenta de nuevo.');
         })
-        .catch(function () {
-          el('actionTitle').textContent = 'Sin conexión';
-          el('actionBody').textContent = 'Revisa tu conexión e intenta de nuevo.';
-          el('confirmBtn').disabled = false;
-          el('confirmBtn').textContent = 'Reintentar';
-          show('s-action');
+        .catch(function (err) {
+          console.error('[claim] POST failed after retries:', err);
+          retryable(
+            'No pudimos confirmar',
+            'Hubo un problema al contactar el servidor. Tu link sigue siendo válido — intenta de nuevo.'
+          );
         });
     }
 
@@ -330,9 +381,9 @@
 
     if (!token) { dead(null, 'not_found'); return; }
 
-    fetch(API + '/api/claim/' + encodeURIComponent(token))
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
+    apiFetch('GET')
+      .then(function (res) {
+        var d = res.body;
         if (!d || d.status === 'not_found' || d.status === 'used' || d.status === 'expired') {
           dead(d, d && d.status); return;
         }
@@ -340,10 +391,14 @@
         // Small beat so the artwork paints before we fire.
         setTimeout(confirm_, 400);
       })
-      .catch(function () {
-        el('actionTitle').textContent = 'Sin conexión';
-        el('actionBody').textContent = 'Revisa tu conexión e intenta de nuevo.';
-        show('s-action');
+      .catch(function (err) {
+        console.error('[claim] GET failed after retries:', err);
+        // The link is untouched at this point — say so, and offer the button
+        // rather than dead-ending on "check your connection".
+        retryable(
+          'No pudimos cargar tu invitación',
+          'Hubo un problema al contactar el servidor. Tu link sigue siendo válido — intenta de nuevo.'
+        );
       });
   })();
   </script>
