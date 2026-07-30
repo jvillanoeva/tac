@@ -159,7 +159,13 @@
   <script>
   (function () {
     var API = CONFIG.API_URL;
-    var token = new URLSearchParams(location.search).get('t') || '';
+
+    // The /c/:token → /confirmar.html?t=:token rewrite is server-side, so the
+    // browser URL stays /c/<token> and location.search is EMPTY. Read the path
+    // first and fall back to ?t= (same order as invite.html).
+    var token = (location.pathname.split('/c/')[1] || '').replace(/\/+$/, '')
+             || new URLSearchParams(location.search).get('t')
+             || '';
 
     var el = function (id) { return document.getElementById(id); };
     var show = function (id) {
