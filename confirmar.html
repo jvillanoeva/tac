@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Confirma tus accesos</title>
+  <link rel="icon" href="/assets/favicon.svg">
+  <style>
+    :root {
+      --bg: #000000;
+      --panel: #0b0b0b;
+      --ink: #ffffff;
+      --muted: #9a9a9a;
+      --accent: #2fe6c4;
+      --accent2: #ff2d78;
+      --line: #1c1c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      text-align: center;
+    }
+    .art { width: 100%; display: block; border: 0; }
+    .art[hidden] { display: none; }
+    .pad { padding: 32px 26px 30px; }
+    .rule {
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      margin: 0 0 12px;
+      line-height: 1.25;
+    }
+    p { font-size: 15px; line-height: 1.65; color: var(--muted); margin: 0 0 14px; }
+    p.strong { color: var(--ink); font-weight: 600; }
+    .event {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      margin: 6px auto 22px;
+      border: 3px solid #1f1f1f;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tick {
+      width: 56px; height: 56px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: #000; font-weight: 800;
+    }
+    .dead {
+      width: 56px; height: 56px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; color: #555;
+    }
+    button {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      background: var(--accent);
+      color: #000;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 15px 34px;
+      border-radius: 999px;
+      margin-top: 8px;
+    }
+    button:disabled { opacity: .5; cursor: default; }
+    a.terms { color: var(--muted); font-size: 12px; text-decoration: underline; }
+    .foot {
+      border-top: 1px solid var(--line);
+      padding: 14px;
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #2e2e2e;
+    }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img id="art" class="art" alt="" hidden>
+    <div class="rule"></div>
+    <div class="pad">
+      <div class="event" id="eventName"></div>
+
+      <!-- Working -->
+      <section id="s-loading">
+        <div class="spinner"></div>
+        <p class="strong" id="loadingMsg">Confirmando tus accesos…</p>
+      </section>
+
+      <!-- Needs a tap (JS-off fallback / retry after a failed send) -->
+      <section id="s-action" hidden>
+        <h1 id="actionTitle">Confirma tus accesos</h1>
+        <p id="actionBody">Da click para recibir tus códigos QR por correo.</p>
+        <button id="confirmBtn" type="button">Confirmar</button>
+      </section>
+
+      <!-- Done -->
+      <section id="s-done" hidden>
+        <div class="tick">✓</div>
+        <h1 id="doneTitle">¡Listo!</h1>
+        <p id="doneBody">Tus códigos QR van en camino a tu correo. Revisa tu bandeja de entrada y la carpeta de spam.</p>
+      </section>
+
+      <!-- Used or expired -->
+      <section id="s-dead" hidden>
+        <div class="dead">×</div>
+        <h1 id="deadTitle">Este link ya no es válido</h1>
+        <p id="deadBody">Este link ya fue usado o han pasado más de 24 horas desde que lo recibiste.</p>
+      </section>
+
+      <p id="termsWrap" hidden style="margin-top:22px; margin-bottom:0;">
+        <a class="terms" id="termsLink" href="#" target="_blank" rel="noopener">Términos y Condiciones</a>
+      </p>
+    </div>
+    <div class="foot">tac.colectivo.live</div>
+  </main>
+
+  <script src="/assets/js/config.js"></script>
+  <script>
+  (function () {
+    var API = CONFIG.API_URL;
+    var token = new URLSearchParams(location.search).get('t') || '';
+
+    var el = function (id) { return document.getElementById(id); };
+    var show = function (id) {
+      ['s-loading', 's-action', 's-done', 's-dead'].forEach(function (s) {
+        el(s).hidden = (s !== id);
+      });
+    };
+
+    function applyBrand(d) {
+      var b = d.brand || {};
+      var r = document.documentElement.style;
+      if (b.bg) r.setProperty('--bg', b.bg);
+      if (b.panel) r.setProperty('--panel', b.panel);
+      if (b.ink) r.setProperty('--ink', b.ink);
+      if (b.muted) r.setProperty('--muted', b.muted);
+      if (b.accent) r.setProperty('--accent', b.accent);
+      if (b.accent2) r.setProperty('--accent2', b.accent2);
+
+      if (d.event && d.event.banner_url) {
+        var art = el('art');
+        art.src = d.event.banner_url;
+        art.hidden = false;
+      }
+      if (d.event && d.event.name) el('eventName').textContent = d.event.name;
+
+      if (d.terms_url) {
+        el('termsLink').href = d.terms_url;
+        el('termsLink').textContent = d.terms_label || 'Términos y Condiciones';
+        el('termsWrap').hidden = false;
+      }
+
+      var L = d.landing || {};
+      if (L.confirming) el('loadingMsg').textContent = L.confirming;
+      if (L.done_title) el('doneTitle').textContent = L.done_title;
+      if (L.done_body) el('doneBody').textContent = L.done_body;
+      if (L.dead_title) el('deadTitle').textContent = L.dead_title;
+      if (L.dead_body) el('deadBody').textContent = L.dead_body;
+      if (L.action_title) el('actionTitle').textContent = L.action_title;
+      if (L.action_body) el('actionBody').textContent = L.action_body;
+    }
+
+    function dead(d) { if (d) applyBrand(d); show('s-dead'); }
+
+    // The POST is what actually burns the token. Mail-security scanners
+    // pre-fetch the link but do not run this script, so their visit only
+    // hits the read-only GET above and the guest's link stays alive.
+    function confirm_() {
+      show('s-loading');
+      fetch(API + '/api/claim/' + encodeURIComponent(token), { method: 'POST' })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          var b = res.body || {};
+          if (res.ok && b.status === 'claimed') { applyBrand(b); show('s-done'); return; }
+          if (b.status === 'used' || b.status === 'expired' || b.status === 'not_found') { dead(b); return; }
+          // Transient (send_failed / 5xx) — let them try again.
+          el('actionTitle').textContent = 'Casi listo';
+          el('actionBody').textContent = b.error || 'No pudimos enviar tus accesos. Intenta de nuevo.';
+          el('confirmBtn').disabled = false;
+          el('confirmBtn').textContent = 'Reintentar';
+          show('s-action');
+        })
+        .catch(function () {
+          el('actionTitle').textContent = 'Sin conexión';
+          el('actionBody').textContent = 'Revisa tu conexión e intenta de nuevo.';
+          el('confirmBtn').disabled = false;
+          el('confirmBtn').textContent = 'Reintentar';
+          show('s-action');
+        });
+    }
+
+    el('confirmBtn').addEventListener('click', function () {
+      el('confirmBtn').disabled = true;
+      confirm_();
+    });
+
+    if (!token) { dead(null); return; }
+
+    fetch(API + '/api/claim/' + encodeURIComponent(token))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || d.status === 'not_found' || d.status === 'used' || d.status === 'expired') { dead(d); return; }
+        applyBrand(d);
+        // Small beat so the artwork paints before we fire.
+        setTimeout(confirm_, 400);
+      })
+      .catch(function () {
+        el('actionTitle').textContent = 'Sin conexión';
+        el('actionBody').textContent = 'Revisa tu conexión e intenta de nuevo.';
+        show('s-action');
+      });
+  })();
+  </script>
+
+  <noscript>
+    <p style="text-align:center;color:#9a9a9a;font-family:Helvetica,Arial,sans-serif;">
+      Necesitas activar JavaScript para confirmar tus accesos.
+    </p>
+  </noscript>
+</body>
+</html>
