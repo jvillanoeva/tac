@@ -112,9 +112,41 @@
       color: #2e2e2e;
     }
     [hidden] { display: none !important; }
+
+    /* Full-bleed brand artwork. When an event supplies art for a state, the
+       copy is baked into the image, so the text card is replaced outright
+       rather than layered on top. object-fit:contain guarantees no wording
+       ever gets cropped; the artwork's own black background makes the
+       letterboxing invisible. */
+    #art-state {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    #art-state.on { display: flex; }
+    #art-state img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      display: block;
+    }
+    body.art-mode .card { display: none; }
   </style>
 </head>
 <body>
+  <!-- Brand artwork for a given state; replaces the card when configured. -->
+  <div id="art-state" aria-live="polite">
+    <picture>
+      <source id="art-mobile" media="(max-width: 760px)">
+      <img id="art-img" alt="">
+    </picture>
+  </div>
+
   <main class="card">
     <img id="art" class="art" alt="" hidden>
     <div class="rule"></div>
@@ -207,7 +239,56 @@
       if (L.action_body) el('actionBody').textContent = L.action_body;
     }
 
-    function dead(d) { if (d) applyBrand(d); show('s-dead'); }
+    /**
+     * If the event supplies artwork for this state, show it full-bleed and
+     * hide the text card entirely (the copy is inside the image). Returns
+     * true when artwork took over.
+     */
+    function showArt(d, state) {
+      var imgs = (d && d.landing && d.landing.images) || {};
+      var a = imgs[state];
+      if (!a || !a.web) return false;
+
+      var img = el('art-img');
+      var src = el('art-mobile');
+      img.onerror = function () {
+        // Never leave a blank screen if an asset 404s — fall back to the card.
+        document.body.classList.remove('art-mode');
+        el('art-state').classList.remove('on');
+      };
+      src.srcset = a.mobile || a.web;
+      img.src = a.web;
+      img.alt = a.alt || '';
+      el('art-state').classList.add('on');
+      document.body.classList.add('art-mode');
+      return true;
+    }
+
+    /**
+     * Dead link. Two distinct cases, and the brand treats them differently:
+     *   used    — they already confirmed and got their QRs
+     *   expired — the 24h window closed without a click
+     * A token that no longer exists is shown as "used": that's what a guest
+     * sees when their invite was re-sent, which rotates the token and kills
+     * the older link.
+     */
+    function dead(d, status) {
+      if (d) applyBrand(d);
+      var state = (status === 'expired') ? 'expired' : 'used';
+
+      if (showArt(d, state)) return;
+
+      // No artwork configured — fall back to the text card.
+      var L = (d && d.landing) || {};
+      if (state === 'expired') {
+        if (L.expired_title) el('deadTitle').textContent = L.expired_title;
+        if (L.expired_body) el('deadBody').textContent = L.expired_body;
+      } else {
+        if (L.used_title) el('deadTitle').textContent = L.used_title;
+        if (L.used_body) el('deadBody').textContent = L.used_body;
+      }
+      show('s-dead');
+    }
 
     // The POST is what actually burns the token. Mail-security scanners
     // pre-fetch the link but do not run this script, so their visit only
@@ -218,8 +299,14 @@
         .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
         .then(function (res) {
           var b = res.body || {};
-          if (res.ok && b.status === 'claimed') { applyBrand(b); show('s-done'); return; }
-          if (b.status === 'used' || b.status === 'expired' || b.status === 'not_found') { dead(b); return; }
+          if (res.ok && b.status === 'claimed') {
+            applyBrand(b);
+            if (!showArt(b, 'done')) show('s-done');
+            return;
+          }
+          if (b.status === 'used' || b.status === 'expired' || b.status === 'not_found') {
+            dead(b, b.status); return;
+          }
           // Transient (send_failed / 5xx) — let them try again.
           el('actionTitle').textContent = 'Casi listo';
           el('actionBody').textContent = b.error || 'No pudimos enviar tus accesos. Intenta de nuevo.';
@@ -241,12 +328,14 @@
       confirm_();
     });
 
-    if (!token) { dead(null); return; }
+    if (!token) { dead(null, 'not_found'); return; }
 
     fetch(API + '/api/claim/' + encodeURIComponent(token))
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (!d || d.status === 'not_found' || d.status === 'used' || d.status === 'expired') { dead(d); return; }
+        if (!d || d.status === 'not_found' || d.status === 'used' || d.status === 'expired') {
+          dead(d, d && d.status); return;
+        }
         applyBrand(d);
         // Small beat so the artwork paints before we fire.
         setTimeout(confirm_, 400);
