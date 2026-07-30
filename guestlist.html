@@ -316,6 +316,24 @@
       </div>
     </div>
 
+    <!-- Two-step claim flow — only rendered when events.claim_flow is enabled -->
+    <div class="card hidden" id="claim-panel" style="margin-bottom:16px;">
+      <div class="flex justify-between items-center" style="flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--text-muted);">
+            Confirmación en dos pasos
+          </div>
+          <div id="claim-counts" style="font-size:13px;margin-top:6px;">Cargando…</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" id="claim-send-btn" onclick="sendClaimInvites(false)">✉️ Enviar invitaciones</button>
+          <button class="btn btn-sm" id="claim-resend-btn" onclick="sendClaimInvites(true)">Reenviar a no confirmados</button>
+          <button class="btn btn-sm" onclick="loadClaimStatus()" title="Actualizar">↻</button>
+        </div>
+      </div>
+      <div id="claim-progress" class="text-xs text-secondary" style="margin-top:10px;display:none;"></div>
+    </div>
+
     <!-- Guest table -->
     <div class="card" style="padding:0; overflow:hidden;">
       <div class="table-wrap">
@@ -546,6 +564,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
     const expandedGroups = new Set();
     let sortKey = null;
     let sortDir = 'asc'; // 'asc' or 'desc'
+    let claimFlowOn = false; // event uses the two-step confirm flow
 
     async function init() {
       await Auth.requireSession();
@@ -628,6 +647,22 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           editLink.style.display = '';
           editLink.classList.remove('hidden');
         }
+        // Two-step claim flow: swap the direct "Enviar QR a todos" action for
+        // the invite panel. On these events the QR is issued on confirmation,
+        // so the direct-send controls would break the mechanic (the API
+        // rejects them too — this just keeps them out of reach).
+        claimFlowOn = !!(event.claim_flow && event.claim_flow.enabled !== false);
+        if (claimFlowOn) {
+          document.getElementById('claim-panel').classList.remove('hidden');
+          const sendAllBtn = document.getElementById('send-all-btn');
+          if (sendAllBtn) sendAllBtn.style.display = 'none';
+          ['add-send-email', 'bulk-send-email', 'excel-send-email'].forEach(id => {
+            const cb = document.getElementById(id);
+            if (cb) { cb.checked = false; if (cb.parentElement) cb.parentElement.style.display = 'none'; }
+          });
+          loadClaimStatus();
+        }
+
         // Door role: hide add/bulk/send-all buttons (view + check-in only)
         if (event.user_role === 'door') {
           document.querySelector('.toolbar').style.display = 'none';
@@ -1453,11 +1488,31 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         return;
       }
 
+      // The API accepts 500 guests per call; send in smaller chunks so a big
+      // list (2000+) imports steadily with visible progress instead of one
+      // giant request that trips the cap or times out.
+      const CHUNK = 250;
+      let added = 0, emailsSent = 0, notice = null;
+      const failedChunks = [];
+
       try {
-        const result = await API.post(`/api/events/${slug}/guests/bulk`, {
-          guests,
-          send_emails: sendEmails,
-        });
+        for (let i = 0; i < guests.length; i += CHUNK) {
+          const part = guests.slice(i, i + CHUNK);
+          const upto = Math.min(i + CHUNK, guests.length);
+          btn.textContent = `Importando ${upto}/${guests.length}...`;
+
+          try {
+            const result = await API.post(`/api/events/${slug}/guests/bulk`, {
+              guests: part,
+              send_emails: sendEmails,
+            });
+            added += result.added || 0;
+            emailsSent += result.emails_sent || 0;
+            if (result.notice) notice = result.notice;
+          } catch (chunkErr) {
+            failedChunks.push(`filas ${i + 1}-${upto}: ${chunkErr.message}`);
+          }
+        }
 
         closeModal('excel-modal');
         // Reset
@@ -1468,12 +1523,80 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         excelHeaders = [];
 
         await loadGuests();
-        alert(`${result.added} invitados importados, ${result.emails_sent} emails enviados`);
+        if (typeof loadClaimStatus === 'function') await loadClaimStatus();
+
+        let msg = `${added} invitados importados`;
+        if (!claimFlowOn) msg += `, ${emailsSent} emails enviados`;
+        if (notice) msg += `\n\n${notice}`;
+        if (failedChunks.length) msg += `\n\nFallaron ${failedChunks.length} lote(s):\n` + failedChunks.join('\n');
+        alert(msg);
       } catch (err) {
         alert('Error: ' + err.message);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Importar';
+      }
+    }
+
+    /* ---------- Two-step claim flow ---------- */
+
+    async function loadClaimStatus() {
+      if (!claimFlowOn) return;
+      const box = document.getElementById('claim-counts');
+      try {
+        const r = await API.get(`/api/events/${slug}/guests/claim-status`);
+        const s = r.stats;
+        box.innerHTML =
+          `<b>${s.confirmed}</b> confirmados &middot; ` +
+          `<b>${s.pending}</b> esperando confirmación &middot; ` +
+          `<b>${s.expired}</b> caducados &middot; ` +
+          `<b>${s.not_invited}</b> sin invitar ` +
+          `<span class="text-secondary">(${s.total} con email)</span>`;
+        document.getElementById('claim-send-btn').textContent =
+          s.not_invited > 0 ? `✉️ Enviar invitaciones (${s.not_invited})` : '✉️ Enviar invitaciones';
+        const rb = document.getElementById('claim-resend-btn');
+        const pendingOrExpired = s.pending + s.expired;
+        rb.textContent = `Reenviar a no confirmados (${pendingOrExpired})`;
+        rb.disabled = pendingOrExpired === 0;
+      } catch (e) {
+        box.textContent = 'No se pudo cargar el estado: ' + e.message;
+      }
+    }
+
+    async function sendClaimInvites(resendAll) {
+      const sendBtn = document.getElementById('claim-send-btn');
+      const resendBtn = document.getElementById('claim-resend-btn');
+      const prog = document.getElementById('claim-progress');
+
+      const what = resendAll
+        ? 'REENVIAR la invitación a todos los que aún no confirmaron (esto invalida sus links anteriores)'
+        : 'enviar la invitación a todos los invitados que aún no la han recibido';
+      if (!confirm(`Vas a ${what}.\n\nCada uno recibe un link de un solo uso válido por 24 horas. ¿Continuar?`)) return;
+
+      sendBtn.disabled = true; resendBtn.disabled = true;
+      prog.style.display = 'block';
+      prog.textContent = 'Enviando... (no cierres esta pestaña)';
+
+      try {
+        const r = await API.post(
+          `/api/events/${slug}/guests/send-claim-all`,
+          resendAll ? { resend: 'all' } : {}
+        );
+        let msg = `${r.sent} invitaciones enviadas de ${r.total}.`;
+        if (r.failed) {
+          msg += `\n${r.failed} fallaron:\n` +
+            (r.failures || []).map(f => `  ${f.email} — ${f.error}`).join('\n');
+        }
+        if (r.message) msg = r.message;
+        prog.textContent = `${r.sent} enviadas · ${r.failed || 0} fallidas`;
+        alert(msg);
+      } catch (e) {
+        prog.textContent = 'Error: ' + e.message;
+        alert('Error al enviar: ' + e.message);
+      } finally {
+        sendBtn.disabled = false; resendBtn.disabled = false;
+        await loadClaimStatus();
+        await loadGuests();
       }
     }
 
