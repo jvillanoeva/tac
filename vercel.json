@@ -2,11 +2,17 @@
   "redirects": [
     { "source": "/amental", "destination": "/acto", "statusCode": 301 },
     { "source": "/amental/:path*", "destination": "/acto/:path*", "statusCode": 301 },
-    { "source": "/e/dixon-jimmy-jules", "destination": "/e/jimi-jules-dixon", "statusCode": 301 }
+    { "source": "/e/dixon-jimmy-jules", "destination": "/e/jimi-jules-dixon", "statusCode": 301 },
+    {
+      "source": "/:path((?!panel$|assets/|favicon).*)",
+      "has": [{ "type": "host", "value": "kia.colectivo.live" }],
+      "destination": "/panel",
+      "statusCode": 307
+    }
   ],
   "rewrites": [
     { "source": "/", "has": [{ "type": "host", "value": "sundaysunday.colectivo.live" }], "destination": "/sundaysunday.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "kia.colectivo.live" }], "destination": "/kia.html" },
+    { "source": "/panel", "destination": "/kia.html" },
     { "source": "/e/:slug", "destination": "/evento.html?e=:slug" },
     { "source": "/invite/:token", "destination": "/invite.html?t=:token" },
     { "source": "/c/:token", "destination": "/confirmar.html?t=:token" },
