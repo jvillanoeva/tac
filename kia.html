@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>FOREV3R Electric · Panel</title>
+<link rel="icon" href="/assets/favicon.svg">
+<style>
+  /* Chart colours are NOT the raw brand hues: #13FCC5 sits at OKLCH L 0.88,
+     outside the dark-surface band, and pairs with the brand pink at ΔE 4.7
+     under deuteranopia. These are the same hues stepped into the band until
+     they validate (ΔE 16.7 deutan / 37.1 normal). Brand hues still run the
+     chrome — headers, rules, buttons — where they carry no data. */
+  :root{
+    --bg:#000; --surface:#0d0d0d; --card:#111; --line:#1e1e1e;
+    --ink:#fff; --ink2:#b9b9b9; --ink3:#7a7a7a;
+    --brand:#13FCC5; --brand2:#E42175;      /* chrome only */
+    --s1:#04AD86;                            /* data: serie única */
+    --ord1:#7FF3D8; --ord2:#04AD86; --ord3:#06705A;  /* rampa ordinal */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 20px 64px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+  .ev{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--ink3);font-weight:700}
+  h1{font-size:22px;margin:8px 0 0;font-weight:800;letter-spacing:-.3px}
+  .meta{font-size:13px;color:var(--ink2);margin-top:4px}
+  .rule{height:2px;background:linear-gradient(90deg,var(--brand),var(--brand2));margin:18px 0 26px}
+
+  .hero{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .hero .fig{font-size:72px;line-height:1;font-weight:800;color:var(--brand);letter-spacing:-2px}
+  .hero .sub{font-size:15px;color:var(--ink2)}
+  .hero .sub b{color:var(--ink)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:26px 0 8px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .kpi .v{font-size:28px;font-weight:800;line-height:1.1}
+  .kpi .l{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-top:8px;font-weight:700}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:20px}
+  .card h2{font-size:14px;margin:0 0 2px;font-weight:800;letter-spacing:.2px}
+  .card p.hint{font-size:12px;color:var(--ink3);margin:0 0 16px}
+  .toggle{background:none;border:1px solid var(--line);color:var(--ink2);font:inherit;font-size:11px;
+    padding:5px 12px;border-radius:999px;cursor:pointer;letter-spacing:1px;text-transform:uppercase}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px}
+  th,td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  th:first-child,td:first-child{text-align:left;font-variant-numeric:normal}
+  th{color:var(--ink3);font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--ink2)}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+  .gate{max-width:380px;margin:14vh auto;text-align:center}
+  .gate input{width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:var(--ink);
+    font:inherit;padding:13px 15px;border-radius:10px;margin:16px 0 12px}
+  .gate button{width:100%;background:var(--brand);color:#000;border:0;font:inherit;font-weight:800;
+    padding:13px;border-radius:999px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;font-size:13px}
+  .gate button:disabled{opacity:.5;cursor:default}
+  .msg{font-size:13px;color:var(--ink2);margin-top:14px;line-height:1.6}
+  .err{color:#ff8fb0}
+  footer{margin-top:34px;text-align:center;font-size:9px;letter-spacing:3px;
+    text-transform:uppercase;color:#2b2b2b}
+  [hidden]{display:none !important}
+  #app{transition:opacity .18s}         /* refetch holds the old render, no skeleton flash */
+  #app.stale{opacity:.55}
+  .tip{position:fixed;pointer-events:none;background:#000;border:1px solid #333;border-radius:9px;
+    padding:8px 11px;font-size:12px;color:var(--ink);z-index:9;white-space:nowrap;opacity:0;transition:opacity .1s}
+  .tip.on{opacity:1}
+</style>
+</head>
+<body data-palette="#04AD86,#AE0355">
+
+<!-- Login -->
+<section class="gate" id="gate" hidden>
+  <div class="ev">FOREV3R Electric by Kia</div>
+  <h1 style="font-size:18px">Panel de confirmaciones</h1>
+  <input type="email" id="email" placeholder="tu@correo.com" autocomplete="email">
+  <button id="send">Enviar acceso</button>
+  <div class="msg" id="gateMsg">Te mandamos un link a tu correo. Solo funcionan los correos autorizados.</div>
+</section>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <div>
+      <div class="ev" id="evName">—</div>
+      <h1 id="evSub">—</h1>
+      <div class="meta" id="evMeta">—</div>
+    </div>
+    <div style="text-align:right">
+      <div class="meta" id="asOf">—</div>
+      <button class="toggle" id="out" style="margin-top:8px">Salir</button>
+    </div>
+  </header>
+  <div class="rule"></div>
+
+  <div class="hero">
+    <div class="fig" id="heroPct">—</div>
+    <div class="sub"><b id="heroN">—</b> <span id="heroOf"></span></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section class="card">
+    <div class="head">
+      <div>
+        <h2>Confirmaciones acumuladas</h2>
+        <p class="hint" id="curveHint">Cada punto es una hora, en horario de CDMX.</p>
+      </div>
+      <button class="toggle" data-tbl="curve">Ver tabla</button>
+    </div>
+    <div id="curveWrap"></div>
+    <div id="curveTbl" hidden></div>
+  </section>
+
+  <section class="card">
+    <div class="head">
+      <div>
+        <h2>Resultado por envío</h2>
+        <p class="hint">Cada barra es una lista distinta enviada en un momento distinto.</p>
+      </div>
+      <button class="toggle" data-tbl="lotes">Ver tabla</button>
+    </div>
+    <div id="lotesWrap"></div>
+    <div class="legend">
+      <span><i style="background:var(--ord1)"></i>Confirmado</span>
+      <span><i style="background:var(--ord2)"></i>Pendiente</span>
+      <span><i style="background:var(--ord3)"></i>Caducado</span>
+    </div>
+    <div id="lotesTbl" hidden></div>
+  </section>
+
+  <section class="card" id="doorCard">
+    <div class="head">
+      <div>
+        <h2>Entrada en vivo</h2>
+        <p class="hint" id="doorHint">El 6 de agosto esto se actualiza solo cada minuto.</p>
+      </div>
+    </div>
+    <div class="hero" style="margin-top:6px">
+      <div class="fig" id="doorN" style="font-size:56px">—</div>
+      <div class="sub" id="doorSub">—</div>
+    </div>
+    <div id="doorWrap"></div>
+  </section>
+
+  <footer>tac.colectivo.live</footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/auth.js"></script>
+<script>
+(function(){
+  var SLUG = new URLSearchParams(location.search).get('slug') || 'forev3r-electric-jamie-xx-06-08-26';
+  var el = function(id){ return document.getElementById(id); };
+  var fmt = function(n){ return (n==null?'—':Number(n).toLocaleString('es-MX')); };
+  Auth.init(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+  /* ---------- login ---------- */
+  el('send').addEventListener('click', function(){
+    var email = el('email').value.trim();
+    if(!email) return;
+    el('send').disabled = true;
+    Auth.getClient().auth.signInWithOtp({ email: email,
+      options:{ emailRedirectTo: location.origin + location.pathname } })
+      .then(function(r){
+        el('gateMsg').className='msg';
+        el('gateMsg').textContent = r.error
+          ? ('No se pudo enviar: ' + r.error.message)
+          : 'Listo — revisa tu correo y abre el link desde este mismo dispositivo.';
+        if(r.error) el('gateMsg').className='msg err';
+      })
+      .finally(function(){ el('send').disabled = false; });
+  });
+  el('email').addEventListener('keydown', function(e){ if(e.key==='Enter') el('send').click(); });
+  el('out').addEventListener('click', function(){
+    Auth.getClient().auth.signOut().then(function(){ location.reload(); });
+  });
+
+  /* ---------- svg helpers ---------- */
+  var NS='http://www.w3.org/2000/svg';
+  function svg(tag, attrs){ var n=document.createElementNS(NS,tag);
+    for(var k in attrs) n.setAttribute(k, attrs[k]); return n; }
+  var tip = el('tip');
+  function showTip(e, html){ tip.innerHTML=html; tip.classList.add('on');
+    var x=e.clientX+14, y=e.clientY-10;
+    if(x+tip.offsetWidth>innerWidth-8) x=e.clientX-tip.offsetWidth-14;
+    tip.style.left=x+'px'; tip.style.top=y+'px'; }
+  function hideTip(){ tip.classList.remove('on'); }
+
+  /* ---------- cumulative confirmations: ONE series (emphasis form) ----------
+     One line, so no legend box — the card title names it. Envío boundaries are
+     annotations, not extra series: a 3rd series for a 1-person batch would be
+     noise and would break the categorical checks. */
+  function drawCurve(curva, lotes){
+    var wrap = el('curveWrap'); wrap.innerHTML='';
+    var byHour = {};
+    curva.forEach(function(p){ byHour[p.hora] = (byHour[p.hora]||0) + p.n; });
+    var hours = Object.keys(byHour).sort();
+    if(!hours.length){ wrap.innerHTML='<p class="hint">Todavía no hay confirmaciones.</p>'; return; }
+
+    var acc=0, pts = hours.map(function(h){ acc+=byHour[h]; return {h:h, v:acc, n:byHour[h]}; });
+    // Narrow screens get a narrower viewBox, not smaller text: the labels are in
+    // viewBox units, so shrinking the box keeps them legible instead of scaling
+    // the whole chart down to 5px type.
+    var narrow = wrap.clientWidth < 560;
+    var W = narrow ? 380 : 920, H = narrow ? 210 : 260;
+    var FS = narrow ? 13 : 11;
+    var PADL = narrow ? 40 : 46, PADR = narrow ? 14 : 18, PADT = 14, PADB = 42; // PADB = x-axis band
+    var maxV = Math.max.apply(null, pts.map(function(p){return p.v;}));
+    var niceMax = Math.ceil(maxV/50)*50 || 10;
+    var x = function(i){ return PADL + i*(W-PADL-PADR)/Math.max(1,pts.length-1); };
+    var y = function(v){ return PADT + (1 - v/niceMax)*(H-PADT-PADB); };
+
+    var s = svg('svg',{viewBox:'0 0 '+W+' '+H, width:'100%', height:H, role:'img',
+      'aria-label':'Confirmaciones acumuladas en el tiempo'});
+
+    // recessive solid hairline grid — never dashed
+    for(var g=0; g<=4; g++){
+      var gv = niceMax*g/4;
+      s.appendChild(svg('line',{x1:PADL,x2:W-PADR,y1:y(gv),y2:y(gv),stroke:'#1e1e1e','stroke-width':1}));
+      var t=svg('text',{x:PADL-10,y:y(gv)+4,fill:'#7a7a7a','font-size':FS,'text-anchor':'end'});
+      t.textContent=fmt(Math.round(gv)); t.style.fontVariantNumeric='tabular-nums'; s.appendChild(t);
+    }
+
+    // envío markers
+    (lotes||[]).forEach(function(l){
+      var idx = pts.findIndex(function(p){ return p.h.slice(5,13) >= (l.enviado||'').slice(0,0); });
+      void idx;
+    });
+
+    var d = pts.map(function(p,i){ return (i?'L':'M')+x(i)+' '+y(p.v); }).join(' ');
+    var area = d + ' L'+x(pts.length-1)+' '+y(0)+' L'+x(0)+' '+y(0)+' Z';
+    var grad = svg('linearGradient',{id:'gcur',x1:0,y1:0,x2:0,y2:1});
+    grad.appendChild(svg('stop',{offset:'0%','stop-color':'#04AD86','stop-opacity':.28}));
+    grad.appendChild(svg('stop',{offset:'100%','stop-color':'#04AD86','stop-opacity':0}));
+    var defs=svg('defs'); defs.appendChild(grad); s.appendChild(defs);
+    s.appendChild(svg('path',{d:area, fill:'url(#gcur)'}));
+    s.appendChild(svg('path',{d:d, fill:'none', stroke:'#04AD86','stroke-width':2,
+      'stroke-linejoin':'round','stroke-linecap':'round'}));
+
+    // direct label on the endpoint only — never a number on every point
+    var last = pts[pts.length-1];
+    s.appendChild(svg('circle',{cx:x(pts.length-1),cy:y(last.v),r:4.5,fill:'#04AD86',
+      stroke:'#111','stroke-width':2}));
+    var lb=svg('text',{x:x(pts.length-1)-8,y:y(last.v)-12,fill:'#fff','font-size':FS+2,
+      'font-weight':800,'text-anchor':'end'});
+    lb.textContent=fmt(last.v); s.appendChild(lb);
+
+    // x ticks — a few, never all. First and last are anchored inward so they
+    // can't be clipped by the viewBox edge.
+    var stepX = Math.max(1, Math.ceil(pts.length/(narrow?2:6)));
+    pts.forEach(function(p,i){
+      if(i%stepX && i!==pts.length-1) return;
+      var isLast = i===pts.length-1, isFirst = i===0;
+      var tx=svg('text',{x:x(i), y:H-16, fill:'#7a7a7a','font-size':FS,
+        'text-anchor': isLast?'end':(isFirst?'start':'middle')});
+      tx.textContent = p.h.slice(8,10)+'/'+p.h.slice(5,7)+' '+p.h.slice(11,16);
+      s.appendChild(tx);
+    });
+
+    // hover: generous hit bands, crosshair + tooltip
+    var hov = svg('g');
+    pts.forEach(function(p,i){
+      var bw=(W-PADL-PADR)/Math.max(1,pts.length);
+      var r=svg('rect',{x:x(i)-bw/2,y:PADT,width:Math.max(bw,24),height:H-PADT-PADB,
+        fill:'transparent',style:'cursor:crosshair'});
+      r.addEventListener('mousemove', function(e){
+        showTip(e,'<b>'+fmt(p.v)+'</b> acumuladas<br><span style="color:#b9b9b9">+'+fmt(p.n)+
+          ' en esa hora<br>'+p.h.slice(8,10)+'/'+p.h.slice(5,7)+' '+p.h.slice(11,16)+' CDMX</span>');
+        cross.setAttribute('x1',x(i)); cross.setAttribute('x2',x(i));
+        cross.style.opacity=1; dot.setAttribute('cx',x(i)); dot.setAttribute('cy',y(p.v)); dot.style.opacity=1;
+      });
+      r.addEventListener('mouseleave', function(){ hideTip(); cross.style.opacity=0; dot.style.opacity=0; });
+      hov.appendChild(r);
+    });
+    var cross=svg('line',{y1:PADT,y2:H-PADB,stroke:'#3a3a3a','stroke-width':1,style:'opacity:0'});
+    var dot=svg('circle',{r:5,fill:'#04AD86',stroke:'#111','stroke-width':2,style:'opacity:0'});
+    s.appendChild(cross); s.appendChild(hov); s.appendChild(dot);
+    wrap.appendChild(s);
+
+    // table twin
+    var rows = pts.slice().reverse().map(function(p){
+      return '<tr><td>'+p.h.slice(8,10)+'/'+p.h.slice(5,7)+' '+p.h.slice(11,16)+
+        '</td><td>'+fmt(p.n)+'</td><td>'+fmt(p.v)+'</td></tr>'; }).join('');
+    el('curveTbl').innerHTML='<table><thead><tr><th>Hora (CDMX)</th><th>Nuevas</th>'+
+      '<th>Acumuladas</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+
+  /* ---------- per-envío stacked bars: ordinal ramp, 2px surface gaps ---------- */
+  function drawLotes(lotes){
+    var wrap=el('lotesWrap'); wrap.innerHTML='';
+    if(!lotes || !lotes.length){ wrap.innerHTML='<p class="hint">Sin envíos todavía.</p>'; return; }
+    var max = Math.max.apply(null, lotes.map(function(l){return l.invitados;}));
+    var narrow = wrap.clientWidth < 560;
+    var W = narrow ? 380 : 920, RH = narrow ? 62 : 54, H = lotes.length*RH+10;
+    var PADL = narrow ? 62 : 92, PADR = narrow ? 46 : 64, FS = narrow ? 12 : 12;
+    var s=svg('svg',{viewBox:'0 0 '+W+' '+H, width:'100%', height:H, role:'img',
+      'aria-label':'Resultado por envío'});
+    var segs=[['confirmados','#7FF3D8','Confirmado'],['pendientes','#04AD86','Pendiente'],
+              ['caducados','#06705A','Caducado']];
+
+    lotes.forEach(function(l,i){
+      var yTop=i*RH+8, bh=22, scale=(W-PADL-PADR)/max, cx=PADL;
+      var lab=svg('text',{x:0,y:yTop+15,fill:'#b9b9b9','font-size':FS,'font-weight':700});
+      lab.textContent='Envío '+l.envio; s.appendChild(lab);
+      var sub=svg('text',{x:0,y:yTop+30,fill:'#7a7a7a','font-size':FS-2});
+      sub.textContent=l.enviado; s.appendChild(sub);
+
+      segs.forEach(function(sg){
+        var v=l[sg[0]]||0; if(!v) return;
+        // A batch of 1 against a max of 875 is a sub-pixel bar. Floor it at 3px
+        // so the row never renders as blank — the value is in the tooltip and
+        // the table either way.
+        var w=Math.max(v*scale, 3);
+        var r=svg('rect',{x:cx,y:yTop,width:Math.max(1,w-2),height:bh,rx:Math.min(4,w/2),fill:sg[1]});
+        r.addEventListener('mousemove',function(e){
+          showTip(e,'<b>'+sg[2]+'</b><br><span style="color:#b9b9b9">'+fmt(v)+' de '+fmt(l.invitados)+
+            ' · '+(100*v/l.invitados).toFixed(1)+'%</span>'); });
+        r.addEventListener('mouseleave',hideTip);
+        s.appendChild(r);
+        // direct label inside only when it fits with padding
+        if(w > (narrow?38:46)){
+          var t=svg('text',{x:cx+8,y:yTop+15,fill:'#04261f','font-size':FS-1,'font-weight':800});
+          t.textContent=fmt(v); s.appendChild(t);
+        }
+        cx+=w;
+      });
+      var pctT=svg('text',{x:W-4,y:yTop+15,fill:'#fff','font-size':FS+1,'font-weight':800,'text-anchor':'end'});
+      pctT.textContent=(l.pct==null?0:l.pct)+'%'; s.appendChild(pctT);
+    });
+    wrap.appendChild(s);
+
+    el('lotesTbl').innerHTML='<table><thead><tr><th>Envío</th><th>Enviado</th><th>Invitados</th>'+
+      '<th>Confirmados</th><th>Pendientes</th><th>Caducados</th><th>%</th></tr></thead><tbody>'+
+      lotes.map(function(l){ return '<tr><td>Envío '+l.envio+'</td><td>'+l.enviado+'</td><td>'+
+        fmt(l.invitados)+'</td><td>'+fmt(l.confirmados)+'</td><td>'+fmt(l.pendientes)+'</td><td>'+
+        fmt(l.caducados)+'</td><td>'+(l.pct==null?0:l.pct)+'%</td></tr>'; }).join('')+'</tbody></table>';
+  }
+
+  function drawDoor(st){
+    var reg=st.totales.registrados, pases=st.totales.pases;
+    el('doorN').textContent=fmt(reg);
+    el('doorSub').innerHTML = reg
+      ? 'de <b>'+fmt(pases)+'</b> pases emitidos · '+(100*reg/Math.max(1,pases)).toFixed(1)+'%'
+      : 'Nadie ha entrado todavía.';
+    var w=el('doorWrap'); w.innerHTML='';
+    var h=st.checkin_por_hora||[];
+    if(!h.length) return;
+    var max=Math.max.apply(null,h.map(function(x){return x.n;}));
+    var W=920,H=140,PADB=30,BW=(W)/h.length;
+    var s=svg('svg',{viewBox:'0 0 '+W+' '+H,width:'100%',height:H,role:'img','aria-label':'Entradas por hora'});
+    h.forEach(function(x,i){
+      var bh=(x.n/max)*(H-PADB-10);
+      var r=svg('rect',{x:i*BW+2,y:H-PADB-bh,width:Math.max(0,BW-4),height:bh,rx:4,fill:'#04AD86'});
+      r.addEventListener('mousemove',function(e){ showTip(e,'<b>'+fmt(x.n)+'</b> entradas<br>'+
+        '<span style="color:#b9b9b9">'+x.hora+' CDMX</span>'); });
+      r.addEventListener('mouseleave',hideTip);
+      s.appendChild(r);
+      var t=svg('text',{x:i*BW+BW/2,y:H-10,fill:'#7a7a7a','font-size':11,'text-anchor':'middle'});
+      t.textContent=x.hora; s.appendChild(t);
+    });
+    w.appendChild(s);
+  }
+
+  /* ---------- render ---------- */
+  var lastPayload = null;
+  function render(d){
+    lastPayload = d;
+    var st=d.stats, t=st.totales;
+    el('evName').textContent=d.evento.nombre;
+    el('evSub').textContent=d.evento.subtitulo||'';
+    el('evMeta').textContent=[d.evento.fecha,d.evento.lugar].filter(Boolean).join(' · ');
+    el('asOf').textContent='Corte '+st.ahora+' CDMX';
+    el('heroPct').textContent=(t.pct==null?0:t.pct)+'%';
+    el('heroN').textContent=fmt(t.confirmados);
+    el('heroOf').textContent='de '+fmt(t.invitados)+' invitados confirmaron';
+    el('kpis').innerHTML=[
+      ['Invitados',t.invitados],['Confirmados',t.confirmados],['Pendientes',t.pendientes],
+      ['Caducados',t.caducados],['Pases emitidos',t.pases],['Entraron',t.registrados]
+    ].map(function(k){ return '<div class="kpi"><div class="v">'+fmt(k[1])+
+      '</div><div class="l">'+k[0]+'</div></div>'; }).join('');
+    drawCurve(st.curva||[], st.por_envio||[]);
+    drawLotes(st.por_envio||[]);
+    drawDoor(st);
+  }
+
+  document.querySelectorAll('[data-tbl]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var id=b.getAttribute('data-tbl');
+      var tbl=el(id+'Tbl'), fig=el(id+'Wrap');
+      var showing=!tbl.hidden;
+      tbl.hidden=showing; fig.hidden=!showing;
+      b.textContent=showing?'Ver tabla':'Ver gráfica';
+    });
+  });
+
+  function load(first){
+    return Auth.getToken().then(function(tok){
+      if(!tok){ el('gate').hidden=false; el('app').hidden=true; return; }
+      if(!first) el('app').classList.add('stale');
+      return fetch(CONFIG.API_URL+'/api/client/'+SLUG+'/overview',
+                   {headers:{Authorization:'Bearer '+tok}})
+        .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,status:r.status,body:b}; }); })
+        .then(function(res){
+          if(res.status===403){
+            el('gate').hidden=false; el('app').hidden=true;
+            el('gateMsg').className='msg err';
+            el('gateMsg').textContent='Ese correo no tiene acceso a este panel. Pídele a Jorge que lo agregue.';
+            return;
+          }
+          if(!res.ok) throw new Error(res.body && res.body.error || 'Error');
+          el('gate').hidden=true; el('app').hidden=false;
+          render(res.body);
+        })
+        .finally(function(){ el('app').classList.remove('stale'); });
+    }).catch(function(e){
+      el('gate').hidden=false; el('gateMsg').className='msg err';
+      el('gateMsg').textContent='No se pudo cargar: '+e.message;
+    });
+  }
+
+  // Re-render on resize so the charts swap between the wide and narrow viewBox
+  // instead of shrinking their labels into illegibility.
+  var rt;
+  addEventListener('resize', function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){ if(lastPayload) render(lastPayload); }, 180);
+  });
+
+  Auth.getClient().auth.onAuthStateChange(function(){ load(true); });
+  load(true);
+  setInterval(function(){ load(false); }, 60000);   // 1 min — live enough for the door
+})();
+</script>
+</body>
+</html>
