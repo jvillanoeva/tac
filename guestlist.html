@@ -566,9 +566,16 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
     let sortDir = 'asc'; // 'asc' or 'desc'
     let claimFlowOn = false; // event uses the two-step confirm flow
 
+    // Set by loadEvent() when the signed-in user is door staff. location.replace()
+    // does not stop execution — without this bail-out init() would carry on and
+    // fetch the guest list, the staff list and the invite links into a page that
+    // is about to be thrown away.
+    let redirectingToScanner = false;
+
     async function init() {
       await Auth.requireSession();
       await loadEvent();
+      if (redirectingToScanner) return;
       await loadGuests();
       await loadStaff();
       await loadInviteLinks();
@@ -663,9 +670,20 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           loadClaimStatus();
         }
 
-        // Door role: hide add/bulk/send-all buttons (view + check-in only)
+        // Door role: this page is not theirs. Send them straight to the scanner.
+        //
+        // Hiding `.toolbar` was never enough: the claim panel, the staff
+        // section and the invite-links list are SIBLINGS of the toolbar, not
+        // children, so they all kept rendering — which put ~1,600 guest email
+        // addresses, the other staff members' emails, and a "Reenviar a no
+        // confirmados" button in front of every door volunteer. The API does
+        // refuse all of it (`door` is absent from every mutating route), but
+        // it should never have been on screen.
         if (event.user_role === 'door') {
-          document.querySelector('.toolbar').style.display = 'none';
+          redirectingToScanner = true;
+          document.body.style.visibility = 'hidden';
+          location.replace(`/scan.html?slug=${encodeURIComponent(slug)}`);
+          return;
         }
       } catch (err) {
         document.getElementById('event-name').textContent = 'Error';
