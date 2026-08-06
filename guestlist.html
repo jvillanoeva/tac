@@ -686,6 +686,19 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           return;
         }
       } catch (err) {
+        // FAIL CLOSED. `GET /api/events/:slug` is owner+staff only, so door
+        // staff 403 right here — which meant the role check above never ran
+        // and the console stayed fully rendered behind an "Error" title.
+        // Nobody who cannot read the event may load its guests, so bail out
+        // of init() regardless, and bounce to the scanner when the failure
+        // was an access denial rather than a network blip.
+        redirectingToScanner = true;
+        const denied = /403|forbidden|access|permis/i.test((err && err.message) || '');
+        if (denied) {
+          document.body.style.visibility = 'hidden';
+          location.replace(`/scan.html?slug=${encodeURIComponent(slug)}`);
+          return;
+        }
         document.getElementById('event-name').textContent = 'Error';
       }
     }
