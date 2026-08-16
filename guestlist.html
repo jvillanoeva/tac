@@ -466,6 +466,13 @@
 María López, maria@email.com, GA
 Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-size:13px;"></textarea>
       </div>
+      <!-- Origin applies to the whole paste: a pasted block is nearly always one
+           person's list. Cheaper and less error-prone than a 6th comma field. -->
+      <div class="form-group">
+        <label class="form-label">Origen <span class="text-xs text-secondary">(se aplica a toda la lista)</span></label>
+        <input type="text" class="form-input" id="bulk-requested-by" list="requested-by-options" autocomplete="off" placeholder="Ej: PR, Artista, Aliados, Socios, Staff, Comp">
+        <span class="text-xs text-secondary">De dónde vienen estos invitados. Sin esto no aparecen en el desglose por origen del reporte.</span>
+      </div>
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;">
         <input type="checkbox" id="bulk-send-email">
         <span class="text-sm">Enviar QR por email a todos</span>
@@ -519,6 +526,10 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
             <label class="form-label">+N (extras)</label>
             <select class="form-input" id="map-plus"></select>
           </div>
+          <div class="form-group">
+            <label class="form-label">Origen</label>
+            <select class="form-input" id="map-requested-by"></select>
+          </div>
         </div>
 
         <!-- Default tier picker — applied to any row missing a tier value -->
@@ -526,6 +537,14 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           <label class="form-label">Categoría por defecto <span class="text-xs text-secondary">(para invitados sin categoría)</span></label>
           <div class="industry-chips" id="excel-default-tier-chips"></div>
           <input type="hidden" id="excel-default-tier">
+        </div>
+
+        <!-- Default origin — most imported files are one source's list and carry
+             no origin column at all, so this is the field that actually gets used. -->
+        <div class="form-group">
+          <label class="form-label">Origen por defecto <span class="text-xs text-secondary">(para filas sin origen)</span></label>
+          <input type="text" class="form-input" id="excel-default-requested-by" list="requested-by-options" autocomplete="off" placeholder="Ej: PR, Artista, Aliados, Socios, Staff, Comp">
+          <span class="text-xs text-secondary">Sin esto los invitados caen en “Sin origen” en el reporte.</span>
         </div>
 
         <!-- Preview table -->
@@ -740,12 +759,28 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       customEl.value = '';
     }
 
-    // Refresh "Invitado por" autocomplete options from prior guests on this event
+    // House origins, offered everywhere "Invitado por" / "Origen" is typed.
+    // These are suggestions, not a fixed list — the column is free text on
+    // purpose while we learn what people actually answer. Offering them anyway
+    // is what stops the same origin being spelled six ways and splitting into
+    // six rows in the report.
+    const ORIGIN_SUGGESTIONS = ['PR', 'Artista', 'Aliados', 'Socios', 'Staff', 'Comp'];
+
+    // Refresh "Invitado por" autocomplete options: house origins first, then any
+    // other value already used on this event (promoter names, agencies, etc).
     function refreshRequestedByOptions() {
       const dl = document.getElementById('requested-by-options');
       if (!dl) return;
-      const unique = Array.from(new Set((allGuests || []).map(g => g.requested_by).filter(Boolean)));
-      dl.innerHTML = unique.map(v => `<option value="${esc(v)}"></option>`).join('');
+      const seen = new Set(ORIGIN_SUGGESTIONS.map(v => v.toLowerCase()));
+      const used = [];
+      for (const g of (allGuests || [])) {
+        const v = (g.requested_by || '').trim();
+        if (!v || seen.has(v.toLowerCase())) continue;
+        seen.add(v.toLowerCase());
+        used.push(v);
+      }
+      dl.innerHTML = [...ORIGIN_SUGGESTIONS, ...used]
+        .map(v => `<option value="${esc(v)}"></option>`).join('');
     }
 
     async function loadGuests() {
@@ -1035,9 +1070,11 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         const result = await API.post(`/api/events/${slug}/guests/bulk`, {
           guests,
           send_emails: document.getElementById('bulk-send-email').checked,
+          default_requested_by: document.getElementById('bulk-requested-by').value.trim() || null,
         });
 
         document.getElementById('bulk-text').value = '';
+        document.getElementById('bulk-requested-by').value = '';
         closeModal('bulk-modal');
         await loadGuests();
         alert(`${result.added} invitados agregados, ${result.emails_sent} emails enviados`);
@@ -1393,7 +1430,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           document.querySelector('#excel-upload-zone .upload-text').textContent = `${file.name} (${json.length} filas)`;
 
           // Populate mapping dropdowns
-          const fields = ['map-name', 'map-email', 'map-tier', 'map-phone', 'map-notes', 'map-plus'];
+          const fields = ['map-name', 'map-email', 'map-tier', 'map-phone', 'map-notes', 'map-plus', 'map-requested-by'];
           fields.forEach(fieldId => {
             const sel = document.getElementById(fieldId);
             const isRequired = fieldId === 'map-name';
@@ -1413,6 +1450,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
           autoMap('map-phone', ['telefono', 'teléfono', 'phone', 'tel', 'celular']);
           autoMap('map-notes', ['notas', 'notes', 'nota', 'comentario', 'comments']);
           autoMap('map-plus', ['plus', 'extras', '+n', 'acompañantes', 'guests']);
+          autoMap('map-requested-by', ['origen', 'invitado por', 'invitado_por', 'source', 'requested_by', 'referido por', 'de parte de', 'pr', 'promotor', 'quien invita']);
 
           // Default-tier chips (for rows with no tier value or no tier column mapped)
           buildExcelDefaultTierChips();
@@ -1478,7 +1516,9 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
       const phoneCol = document.getElementById('map-phone').value;
       const notesCol = document.getElementById('map-notes').value;
       const plusCol = document.getElementById('map-plus').value;
+      const requestedByCol = document.getElementById('map-requested-by').value;
       const defaultTier = document.getElementById('excel-default-tier').value || '';
+      const defaultRequestedBy = document.getElementById('excel-default-requested-by').value.trim();
       const sendEmails = document.getElementById('excel-send-email').checked;
 
       const btn = document.getElementById('excel-btn');
@@ -1501,8 +1541,10 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         const phone = phoneCol ? String(row[phoneCol] || '').trim() || null : null;
         const notes = notesCol ? String(row[notesCol] || '').trim() || null : null;
         const plusN = plusCol ? parseInt(row[plusCol]) || 0 : 0;
+        // Per-row origin wins; the server falls back to default_requested_by.
+        const requestedBy = requestedByCol ? String(row[requestedByCol] || '').trim() || null : null;
 
-        guests.push({ name, email, tier, phone, notes, plus: plusN });
+        guests.push({ name, email, tier, phone, notes, plus: plusN, requested_by: requestedBy });
       }
 
       if (missingTierCount > 0) {
@@ -1536,6 +1578,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
             const result = await API.post(`/api/events/${slug}/guests/bulk`, {
               guests: part,
               send_emails: sendEmails,
+              default_requested_by: defaultRequestedBy || null,
             });
             added += result.added || 0;
             emailsSent += result.emails_sent || 0;
@@ -1548,6 +1591,7 @@ Carlos García" style="min-height:160px;font-family:'SF Mono',monospace;font-siz
         closeModal('excel-modal');
         // Reset
         document.getElementById('excel-file').value = '';
+        document.getElementById('excel-default-requested-by').value = '';
         document.getElementById('excel-mapping').style.display = 'none';
         document.querySelector('#excel-upload-zone .upload-text').textContent = 'Click para seleccionar archivo';
         excelData = [];
