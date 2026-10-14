@@ -102,6 +102,25 @@
       margin-top: 8px;
     }
     button:disabled { opacity: .5; cursor: default; }
+    #aliasInput {
+      width: 100%;
+      box-sizing: border-box;
+      background: var(--bg);
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      padding: 14px 16px;
+      text-align: center;
+      outline: none;
+    }
+    #aliasInput:focus { border-color: var(--accent); }
+    #aliasHint { min-height: 18px; font-size: 12.5px; margin: 8px 0 0; color: var(--muted); }
+    #aliasHint.ok { color: var(--accent); }
+    #aliasHint.bad { color: var(--accent2); }
+    #aliasLead { font-size: 14px; line-height: 1.6; color: var(--muted); margin: 0 0 12px; }
     a.terms { color: var(--muted); font-size: 12px; text-decoration: underline; }
     .foot {
       border-top: 1px solid var(--line);
@@ -163,6 +182,11 @@
       <section id="s-action" hidden>
         <h1 id="actionTitle">Confirma tus accesos</h1>
         <p id="actionBody">Da click para recibir tus códigos QR por correo.</p>
+        <div id="aliasWrap" hidden style="margin: 6px 0 18px;">
+          <p id="aliasLead">Nos encantaría saludarte por tu nombre. No tiene que ser —tu— nombre: escribe cómo quieres que te conozcamos.</p>
+          <input id="aliasInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="TU NOMBRE EN LA PISTA (opcional)">
+          <p id="aliasHint"></p>
+        </div>
         <button id="confirmBtn" type="button">Confirmar</button>
       </section>
 
@@ -299,13 +323,17 @@
      * duplicate attempt returns already_claimed instead of sending a second
      * ticket email.
      */
-    function apiFetch(method, attempt) {
+    function apiFetch(method, attempt, body) {
       attempt = attempt || 1;
       var MAX = 3;
       var ctrl = ('AbortController' in window) ? new AbortController() : null;
       var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 25000);
 
       var opts = { method: method };
+      if (body) {
+        opts.headers = { 'Content-Type': 'application/json' };
+        opts.body = JSON.stringify(body);
+      }
       if (ctrl) opts.signal = ctrl.signal;
 
       return fetch(API + '/api/claim/' + encodeURIComponent(token), opts)
@@ -322,7 +350,7 @@
           console.warn('[claim] ' + method + ' attempt ' + attempt + ' failed:', err && err.message);
           var backoff = attempt === 1 ? 1500 : 4000;
           return new Promise(function (res) { setTimeout(res, backoff); })
-            .then(function () { return apiFetch(method, attempt + 1); });
+            .then(function () { return apiFetch(method, attempt + 1, body); });
         });
     }
 
@@ -343,15 +371,39 @@
     // The POST is what actually burns the token. Mail-security scanners
     // pre-fetch the link but do not run this script, so their visit only
     // hits the read-only GET above and the guest's link stays alive.
+    var askAlias = false;
+
     function confirm_() {
       show('s-loading');
       posted = true;
-      apiFetch('POST')
+      var body = null;
+      if (askAlias) {
+        var a = (el('aliasInput').value || '').trim();
+        if (a) body = { alias: a };
+      }
+      apiFetch('POST', 1, body)
         .then(function (res) {
           var b = res.body || {};
           if (res.ok && b.status === 'claimed') {
             applyBrand(b);
+            if (b.alias_saved && b.alias) {
+              el('doneTitle').textContent = '¡Listo, ' + b.alias + '!';
+            } else if (askAlias && body && !b.alias_saved) {
+              el('doneBody').textContent =
+                (el('doneBody').textContent || '') + ' (Ese nombre voló mientras confirmabas — podrás elegir otro en la puerta.)';
+            }
             if (!showArt(b, 'done')) show('s-done');
+            return;
+          }
+          if (b.status === 'alias_taken' || b.status === 'bad_alias') {
+            // Nothing was burned — let them pick another name and retry.
+            var hint = el('aliasHint');
+            hint.textContent = b.error || 'Ese nombre ya fue tomado. Elige otro.';
+            hint.className = 'bad';
+            el('confirmBtn').disabled = false;
+            el('confirmBtn').textContent = 'Confirmar';
+            show('s-action');
+            el('aliasInput').focus();
             return;
           }
           if (b.status === 'used' && posted) {
@@ -388,8 +440,39 @@
           dead(d, d && d.status); return;
         }
         applyBrand(d);
-        // Small beat so the artwork paints before we fire.
-        setTimeout(confirm_, 400);
+        if (d.landing && d.landing.ask_alias) {
+          // Alias flow: show the form and wait for the tap — no auto-confirm.
+          askAlias = true;
+          if (d.landing.alias_lead) el('aliasLead').textContent = d.landing.alias_lead;
+          if (d.landing.alias_placeholder) el('aliasInput').placeholder = d.landing.alias_placeholder;
+          el('aliasWrap').hidden = false;
+          if (d.landing.action_title) el('actionTitle').textContent = d.landing.action_title;
+          if (d.landing.action_body) el('actionBody').textContent = d.landing.action_body;
+          el('confirmBtn').disabled = false;
+          show('s-action');
+
+          // Live availability, debounced; purely advisory (POST re-checks).
+          var t = null;
+          el('aliasInput').addEventListener('input', function () {
+            var v = this.value.trim();
+            var hint = el('aliasHint');
+            clearTimeout(t);
+            if (!v) { hint.textContent = ''; hint.className = ''; return; }
+            t = setTimeout(function () {
+              fetch(API + '/api/claim/' + encodeURIComponent(token) + '/alias-check?a=' + encodeURIComponent(v))
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                  if (el('aliasInput').value.trim() !== v) return; // stale
+                  if (j.available) { hint.textContent = '✓ Libre — es tuyo si confirmas'; hint.className = 'ok'; }
+                  else { hint.textContent = j.error || '✗ Ya fue tomado'; hint.className = 'bad'; }
+                })
+                .catch(function () { hint.textContent = ''; hint.className = ''; });
+            }, 450);
+          });
+        } else {
+          // Small beat so the artwork paints before we fire.
+          setTimeout(confirm_, 400);
+        }
       })
       .catch(function (err) {
         console.error('[claim] GET failed after retries:', err);
