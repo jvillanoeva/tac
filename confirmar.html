@@ -90,8 +90,8 @@
       appearance: none;
       border: 0;
       cursor: pointer;
-      background: var(--accent);
-      color: #000;
+      background: var(--btn-bg, var(--accent));
+      color: var(--btn-ink, #000);
       font-family: inherit;
       font-size: 14px;
       font-weight: 800;
@@ -105,7 +105,7 @@
     #aliasInput {
       width: 100%;
       box-sizing: border-box;
-      background: var(--bg);
+      background: var(--input-bg, var(--bg));
       border: 1.5px solid var(--line);
       border-radius: 12px;
       color: var(--ink);
@@ -239,6 +239,10 @@
       if (b.muted) r.setProperty('--muted', b.muted);
       if (b.accent) r.setProperty('--accent', b.accent);
       if (b.accent2) r.setProperty('--accent2', b.accent2);
+      if (b.btn_bg) r.setProperty('--btn-bg', b.btn_bg);
+      if (b.btn_ink) r.setProperty('--btn-ink', b.btn_ink);
+      if (b.line) r.setProperty('--line', b.line);
+      if (b.input_bg) r.setProperty('--input-bg', b.input_bg);
 
       if (d.event && d.event.banner_url) {
         var art = el('art');
@@ -256,6 +260,7 @@
       var L = d.landing || {};
       if (L.confirming) el('loadingMsg').textContent = L.confirming;
       if (L.done_title) el('doneTitle').textContent = L.done_title;
+      if (L.done_mark === 'dot') document.querySelector('.tick').textContent = '';
       if (L.done_body) el('doneBody').textContent = L.done_body;
       if (L.dead_title) el('deadTitle').textContent = L.dead_title;
       if (L.dead_body) el('deadBody').textContent = L.dead_body;
@@ -387,7 +392,7 @@
           if (res.ok && b.status === 'claimed') {
             applyBrand(b);
             if (b.alias_saved && b.alias) {
-              el('doneTitle').textContent = '¡Listo, ' + b.alias + '!';
+              el('doneTitle').textContent = 'Listo, ' + b.alias;
             } else if (askAlias && body && !b.alias_saved) {
               el('doneBody').textContent =
                 (el('doneBody').textContent || '') + ' (Ese nombre voló mientras confirmabas — podrás elegir otro en la puerta.)';
