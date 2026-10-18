@@ -391,11 +391,15 @@
           var b = res.body || {};
           if (res.ok && b.status === 'claimed') {
             applyBrand(b);
-            if (b.alias_saved && b.alias) {
+            if (b.alias) {
               el('doneTitle').textContent = 'Listo, ' + b.alias;
+              if (askAlias && body && !b.alias_saved) {
+                el('doneBody').textContent =
+                  'Tu clave sigue siendo ' + b.alias + '. ' + (el('doneBody').textContent || '');
+              }
             } else if (askAlias && body && !b.alias_saved) {
               el('doneBody').textContent =
-                (el('doneBody').textContent || '') + ' (Ese nombre voló mientras confirmabas — podrás elegir otro en la puerta.)';
+                (el('doneBody').textContent || '') + ' (Esa clave voló mientras confirmabas — podrás elegir otra en la puerta.)';
             }
             if (!showArt(b, 'done')) show('s-done');
             return;
