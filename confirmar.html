@@ -305,6 +305,19 @@
       if (d) applyBrand(d);
       var state = (status === 'expired') ? 'expired' : 'used';
 
+      // Used link + saved clave = a returning member, not an error. Greet
+      // them on the done card instead of rejecting with an X.
+      if (state === 'used' && d && d.alias) {
+        var L2 = (d.landing || {});
+        var t = (L2.used_named_title || 'Hey {{CLAVE}} — ya estás en la lista').split('{{CLAVE}}').join(d.alias);
+        var b = (L2.used_named_body || 'Tu QR ya fue enviado a tu correo.').split('{{CLAVE}}').join(d.alias);
+        el('doneTitle').textContent = t;
+        el('doneBody').textContent = b;
+        if (L2.done_mark === 'dot') document.querySelector('.tick').textContent = '';
+        show('s-done');
+        return;
+      }
+
       if (showArt(d, state)) return;
 
       // No artwork configured — fall back to the text card.
