@@ -437,6 +437,14 @@
           if (b.status === 'used' || b.status === 'expired' || b.status === 'not_found') {
             dead(b, b.status); return;
           }
+          if (b.status === 'cap_reached') {
+            // claim_flow.cap hit — nothing was burned, but there is no retry.
+            applyBrand(b);
+            el('deadTitle').textContent = 'Se llenó — te vemos en la puerta, cover normal.';
+            el('deadBody').textContent = '';
+            show('s-dead');
+            return;
+          }
           retryable('Casi listo', b.error || 'No pudimos enviar tus accesos. Intenta de nuevo.');
         })
         .catch(function (err) {
